@@ -3,9 +3,10 @@
   "private": true,
   "description": "ESN Thessaloniki speed friending presentation and event controller",
   "scripts": {
-    "test": "node tests/simulate-rotation.js --quick && node tests/key-test.js",
+    "test": "node tests/simulate-rotation.js --quick && node tests/key-test.js && node tests/remote-test.js",
     "simulate": "node tests/simulate-rotation.js",
-    "keytest": "node tests/key-test.js"
+    "keytest": "node tests/key-test.js",
+    "remotetest": "node tests/remote-test.js"
   },
   "devDependencies": {
     "playwright": "^1.55.0"

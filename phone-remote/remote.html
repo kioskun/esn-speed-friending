@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b0b16">
+<title>ESN Remote</title>
+<style>
+  :root{ --pink:#EC008C; --cyan:#00AEEF; --green:#7AC143; --orange:#F47B20; --bg:#0b0b16; --panel:rgba(255,255,255,.07); --line:rgba(255,255,255,.16) }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent }
+  html,body{ margin:0; background:var(--bg); color:#fff; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; }
+  body{ padding:14px 14px calc(14px + env(safe-area-inset-bottom)); min-height:100vh; display:flex; flex-direction:column; gap:12px; user-select:none }
+  .top{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:rgba(255,255,255,.7) }
+  .dot{ display:inline-block; width:10px; height:10px; border-radius:50%; background:#888; margin-right:6px; vertical-align:middle }
+  .ok .dot{ background:var(--green) } .bad .dot{ background:var(--pink) }
+  .status{ background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:14px 16px; text-align:center }
+  .screen{ font-size:15px; letter-spacing:1px; text-transform:uppercase; color:var(--cyan) }
+  .time{ font-size:clamp(56px,20vw,96px); font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums; letter-spacing:1px }
+  .sub{ font-size:14px; color:rgba(255,255,255,.75) }
+  .flags span{ display:inline-block; margin:6px 3px 0; padding:3px 9px; border-radius:99px; font-size:12px; font-weight:700; background:rgba(236,0,140,.25); border:1px solid rgba(236,0,140,.6) }
+  button{ font:inherit; color:#fff; border:1px solid var(--line); background:var(--panel); border-radius:16px; padding:0 8px; min-height:64px; font-size:18px; font-weight:700; touch-action:manipulation }
+  button:active{ transform:scale(.97); filter:brightness(1.3) }
+  button:disabled{ opacity:.35 }
+  .main{ min-height:96px; font-size:24px; background:rgba(122,193,67,.22); border-color:var(--green) }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px }
+  .grid4 button{ font-size:16px; min-height:58px }
+  .rot{ border-color:var(--cyan); background:rgba(0,174,239,.16) }
+  .brk{ border-color:var(--orange); background:rgba(244,123,32,.16) }
+  .armed{ background:var(--pink)!important; border-color:#fff!important }
+  .small{ font-size:15px; min-height:52px; font-weight:600 }
+  .toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#222; border:1px solid var(--line); padding:10px 16px; border-radius:12px; font-size:15px; opacity:0; transition:opacity .2s; pointer-events:none; max-width:90vw; text-align:center }
+  .toast.show{ opacity:1 }
+  body.down .status, body.down button{ opacity:.4 }
+  .flags span.snd{ background:rgba(244,123,32,.3); border-color:#F47B20 }
+</style>
+</head>
+<body>
+  <div class="top"><div id="conn"><span class="dot"></span><span id="connText">Connecting…</span></div><div>ESN Speed Friending</div></div>
+
+  <div class="status">
+    <div class="screen" id="screen">—</div>
+    <div class="time" id="time">--:--</div>
+    <div class="sub" id="round">&nbsp;</div>
+    <div class="flags" id="flags"></div>
+  </div>
+
+  <button class="main" id="bSpace" data-k=" ">Space</button>
+
+  <div class="grid">
+    <button class="rot" id="bRotate" data-k="r" data-confirm="Tap again to rotate">Rotate now</button>
+    <button class="brk" id="bBreak" data-k="b" data-confirm="Tap again for a break">Break</button>
+  </div>
+
+  <div class="grid4">
+    <button data-k="[">−1 min</button>
+    <button data-k="-">−30 s</button>
+    <button data-k="+">+30 s</button>
+    <button data-k="]">+1 min</button>
+  </div>
+
+  <div class="grid">
+    <button class="small" data-k="ArrowLeft">◀ Back</button>
+    <button class="small" data-k="ArrowRight">Next ▶</button>
+    <button class="small" data-k="h">Help QR</button>
+    <button class="small" id="bMute" data-k="m">Mute</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const T = new URLSearchParams(location.search).get('t') || '';
+  const $ = id => document.getElementById(id);
+  let toastTimer = null, last = null;
+
+  function toast(msg){
+    const el = $('toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  }
+
+  // fetch that gives up after ms (a hanging Wi-Fi must not freeze the page)
+  function timedFetch(url, opts, ms){
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ms);
+    return fetch(url, Object.assign({ cache:'no-store', signal: ac.signal }, opts)).finally(() => clearTimeout(timer));
+  }
+
+  let sending = false;
+  async function send(k){
+    if(sending){ toast('Wait, still sending the last tap…'); return; }
+    if(last && last.locked && k !== 'm') toast('Keys are locked on the laptop (press L there)');
+    else if(last && last.settings && k !== 'm') toast('Settings are open on the laptop');
+    if(navigator.vibrate) navigator.vibrate(25);
+    sending = true;
+    try{
+      const r = await timedFetch('/api/cmd?t=' + encodeURIComponent(T) + '&k=' + encodeURIComponent(k), { method:'POST' }, 2500);
+      const j = await r.json();
+      if(!r.ok) toast(j.error === 'code' ? 'Wrong code: scan the QR again' : 'Not sent');
+      else if(!j.showConnected) toast('Show not connected: is it open on the laptop?');
+      setTimeout(poll, 350);
+    } catch(e){ toast('Not sent: laptop not reachable'); }
+    sending = false;
+  }
+
+  // Rotate and Break need two taps, so a pocket tap can't move 200 people
+  document.querySelectorAll('button[data-k]').forEach(b => {
+    let armed = null;
+    const label = b.textContent;
+    b.addEventListener('click', () => {
+      if(b.dataset.confirm && !armed){
+        b.classList.add('armed'); b.textContent = b.dataset.confirm;
+        armed = setTimeout(() => { armed = null; b.classList.remove('armed'); b.textContent = label; }, 3000);
+        return;
+      }
+      if(armed){ clearTimeout(armed); armed = null; b.classList.remove('armed'); b.textContent = label; }
+      send(b.dataset.k);
+    });
+  });
+
+  function render(j){
+    const conn = $('conn');
+    const s = j && j.state;
+    const up = j && j.connected && s && !s.error;
+    conn.className = up ? 'ok' : 'bad';
+    document.body.classList.toggle('down', !up);
+    $('connText').textContent = up ? 'Connected' : (j ? 'Show not open on the laptop' : 'Laptop not reachable');
+    if(!s || s.error){ return; }
+    $('screen').textContent = s.screen + (s.active === 'timer' ? ' · ' + s.status : '');
+    $('time').textContent = s.time;
+    $('round').textContent = 'Round ' + s.round + (s.total > 0 ? ' of ' + s.total : '');
+    const flags = [];
+    if(s.sound === false) flags.push('<span class="snd">NO SOUND: click the show once on the laptop</span>');
+    if(s.locked) flags.push('<span>KEYS LOCKED (press L on the laptop)</span>');
+    if(s.muted) flags.push('<span>MUTED</span>');
+    if(s.settings) flags.push('<span>SETTINGS OPEN</span>');
+    $('flags').innerHTML = flags.join('');
+    const hint = s.next && s.next !== '—' ? s.next : 'Nothing to do';
+    $('bSpace').textContent = hint;
+    $('bSpace').disabled = !s.next || s.next === '—';
+    $('bMute').textContent = s.muted ? 'Unmute' : 'Mute';
+    last = s;
+  }
+
+  let polling = false;
+  async function poll(){
+    if(polling) return; polling = true;
+    try{
+      const r = await timedFetch('/api/state?t=' + encodeURIComponent(T), {}, 2500);
+      if(r.status === 403){ render(null); $('connText').textContent = 'Wrong code: scan the QR again'; }
+      else render(await r.json());
+    } catch(e){ render(null); }
+    polling = false;
+  }
+  poll(); setInterval(poll, 700);
+</script>
+</body>
+</html>

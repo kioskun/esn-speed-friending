@@ -29,6 +29,25 @@ It is one HTML file. There is nothing to install and no internet is needed on th
 | M | Mute / unmute |
 | O | Operator view (a large panel, or a separate window for a second screen, chosen in Settings) |
 
+### Phone remote (optional)
+
+Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 s / ±1 min, Help, Mute, and the live timer. The laptop keyboard and TeamViewer keep working at the same time. Nothing needs installing; it uses PowerShell, which comes with Windows.
+
+**Network: use a phone hotspot.** Venue Wi-Fi often blocks phones from reaching laptops.
+1. On the phone you'll use as the remote (or a second phone), turn on **Personal hotspot / Mobile hotspot**.
+2. Connect the laptop to that hotspot's Wi-Fi. The remote only needs the local connection, not mobile data.
+3. Double-click `phone-remote\start-phone-remote.bat`. A black window opens (keep it open all night), and the browser opens two pages: **Connect your phone** and **the show**.
+4. **The first time only**, Windows Firewall asks whether *Windows PowerShell* may use the network. Tick **Private** *and* **Public** (a hotspot often counts as public), then click **Allow access**. Do this before the event so the prompt never appears on the projector.
+5. Scan the QR on the *Connect your phone* page with the phone camera. The remote opens in the phone's browser and shows **Connected**. If there are several QRs, use the one marked "Try this one first", or whichever matches the hotspot.
+6. Move the show tab to the projector, press F11, and click once on it so sound can play.
+
+Good to know:
+- **Rotate** and **Break** need two taps, so a pocket tap can't move the room. Reset (0 0) and Settings stay on the laptop only.
+- If the keys are locked (L), the phone is locked too, except Mute. The phone shows "KEYS LOCKED".
+- The access code in the QR changes every time the launcher starts. After a restart, scan again.
+- **Settings and seating history are stored separately** for the launcher (`http://localhost`) and for the file opened by double-click. Pick one way for the whole night, and set Settings (Esc) in that one.
+- If the phone says "Laptop not reachable", check that both are on the same hotspot and that the black window is still open. Otherwise, carry on with the keyboard or TeamViewer.
+
 ### Seating and rotation
 
 - People sit anywhere, up to 4 per table, and a volunteer hands out badges A, B, C and D so each table has different letters. Tables of 3 are fine; never seat 5.
@@ -56,6 +75,7 @@ Answers appear in the form's *Responses* tab in Google Drive.
 | `current/` | The version in use: `speed-friending-esn.html`, `assets/` (sounds, help QR) and `Badges/` (print at 5 × 5 cm). Only edit here. |
 | `versions/` | Numbered snapshots of earlier versions. `VERSIONS.txt` says what changed in each. |
 | `feedback-form/` | Google Apps Script that creates the feedback form. |
+| `phone-remote/` | Phone remote launcher (`start-phone-remote.bat`), its small web server, and the phone page. It serves `current/` without changing it. |
 | `tests/` | Automatic tests (below). |
 | `archive/` | Old material, not in GitHub because it is too large. Kept on Drive. |
 
@@ -72,5 +92,6 @@ npm test
 
 - `tests/simulate-rotation.js` plays thousands of nights person by person and fails if anyone meets someone twice when the table count allows it. `npm run simulate` runs the full 200,000-night version.
 - `tests/key-test.js` presses every key on every screen and state, with the lock on and off, in both operator modes, and checks nothing breaks. It also plays a whole night with the warm-up.
+- `tests/remote-test.js` starts the phone remote and checks that every phone button on every screen does exactly what the same key does on the laptop. It also covers the phone page itself, wrong codes, and taps that must never be replayed.
 
 Settings and progress are saved in the browser (`localStorage`), so they belong to one browser on one computer. Run the event from the same browser you set it up in.

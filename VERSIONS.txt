@@ -43,3 +43,8 @@ Versions (all 28/09/2026)
       Clear seating history button). Feedback form link in Settings, shown as
       a QR on the Thank you screen (made offline, hidden when empty).
       Tests in tests\, feedback form script in feedback-form\, README.md.
+
+Add-ons (the app file is not changed by these)
+  phone-remote\  (28/09/2026) Phone remote: double-click start-phone-remote.bat,
+      scan the QR, and control the show from a phone on the same hotspot. It
+      serves current\ unchanged; see README.md "Phone remote".

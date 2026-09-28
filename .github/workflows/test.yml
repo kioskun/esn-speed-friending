@@ -23,3 +23,7 @@ jobs:
         env:
           CI: "true"
           WORKERS: "4"
+      - name: Phone remote test (every phone command, run with pwsh)
+        run: node tests/remote-test.js
+        env:
+          CI: "true"

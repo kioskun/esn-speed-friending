@@ -41,6 +41,8 @@ Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 
 5. Scan the QR on the *Connect your phone* page with the phone camera. The remote opens in the phone's browser and shows **Connected**. If there are several QRs, use the one marked "Try this one first", or whichever matches the hotspot.
 6. Move the show tab to the projector, press F11, and click once on it so sound can play.
 
+**Start the launcher and connect the phone before guests arrive, or while the projector shows something else.** The Connect page and the black window show the access code. Keep the laptop on your hotspot only, not the venue Wi-Fi.
+
 Good to know:
 - **Rotate** and **Break** need two taps, so a pocket tap can't move the room. Reset (0 0) and Settings stay on the laptop only.
 - If the keys are locked (L), the phone is locked too, except Mute. The phone shows "KEYS LOCKED".

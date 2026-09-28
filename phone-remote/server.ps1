@@ -25,22 +25,18 @@ if(-not (Test-Path -LiteralPath $AppDir)){ $AppDir = [IO.Path]::GetFullPath([IO.
 $AppFile = 'speed-friending-esn.html'
 if(-not (Test-Path -LiteralPath ([IO.Path]::Combine($AppDir, $AppFile)))){ Write-Host "Can't find $AppFile in $AppDir"; exit 1 }
 
-# Short access code: the phone page and commands only work with it. It is
-# kept for 24 hours, so restarting the launcher doesn't disconnect the phone.
+# Access code: 6 random letters and numbers from the system's secure random
+# generator, new on every start and never stored on disk (restarting means
+# scanning again). Guessing is stopped by the 20-wrong-tries lockout below.
 $alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ'
-$tokenFile = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'esn-remote-code.txt')
-$Token = $null
-if(-not $TestMode){
-  try {
-    $tf = Get-Item -LiteralPath $tokenFile -ErrorAction Stop
-    if(([DateTime]::Now - $tf.LastWriteTime).TotalHours -lt 24){ $Token = ([IO.File]::ReadAllText($tokenFile)).Trim() }
-    if($Token -notmatch '^[A-Z0-9]{6}$'){ $Token = $null }
-  } catch {}
-}
-if(-not $Token){
-  $Token = -join (1..6 | ForEach-Object { $alphabet[(Get-Random -Maximum $alphabet.Length)] })
-  if(-not $TestMode){ try { [IO.File]::WriteAllText($tokenFile, $Token) } catch {} }
-}
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 6
+$rng.GetBytes($bytes)
+$Token = -join ($bytes | ForEach-Object { $alphabet[$_ % $alphabet.Length] })
+# The older launcher kept a short code in a temp file: remove it
+try { Remove-Item -LiteralPath ([IO.Path]::Combine([IO.Path]::GetTempPath(), 'esn-remote-code.txt')) -ErrorAction Stop } catch {}
+# Devices that keep sending a wrong key get shut out until the next start
+$script:badTries = @{}
 # Changes every start, so the show knows to forget old command numbers
 $Boot = [string](Get-Random -Maximum 1000000000)
 
@@ -191,7 +187,13 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
   $remoteIp = $client.Client.RemoteEndPoint.Address
   $isLocal = [Net.IPAddress]::IsLoopback($remoteIp)
   if($TestMode -and $headers['x-test-remote'] -eq '1'){ $isLocal = $false }
-  $authed = $isLocal -or ($q['t'] -and $q['t'].ToUpper() -eq $Token)
+  $ipKey = $remoteIp.ToString()
+  if(-not $isLocal -and $script:badTries[$ipKey] -ge 20){ SendText $client 403 'application/json' '{"error":"blocked"}'; return }
+  # The phone sends the key in a header (the QR link carries it once as ?t=)
+  $given = if($headers['x-remote-key']){ $headers['x-remote-key'] } else { [string]$q['t'] }
+  $keyOk = $given -and [string]::Equals($given.Trim(), $Token, [StringComparison]::OrdinalIgnoreCase)
+  if(-not $isLocal -and $given -and -not $keyOk){ $script:badTries[$ipKey] = 1 + [int]$script:badTries[$ipKey] }
+  $authed = $isLocal -or $keyOk
 
   switch -regex ($path){
     '^/api/sync$' {
@@ -238,7 +240,7 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
       return
     }
     '^/remote$' {
-      if(-not $authed){ SendFile $client (Join-Path $Here 'wrong-code.html') $null; return }
+      # The page itself holds no secrets; every command it sends needs the key
       SendFile $client (Join-Path $Here 'remote.html') $null; return
     }
     '^/connect$' {
@@ -249,8 +251,8 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
       SendFile $client (Join-Path $Here $matches[1]) $null; return
     }
     default {
-      # The show and its files: this computer, or a phone with the code
-      if(-not $authed){ SendText $client 403 'text/plain' 'forbidden'; return }
+      # The show and its files: this computer only
+      if(-not $isLocal){ SendText $client 403 'text/plain' 'forbidden'; return }
       if($path -eq '/' -or $path -eq "/$AppFile"){ SendText $client 200 'text/html; charset=utf-8' (Get-ShowHtml); return }
       $full = [IO.Path]::GetFullPath([IO.Path]::Combine($AppDir, $path.TrimStart('/').Replace('/', [string]$Sep)))
       if(-not $full.StartsWith($AppDir + $Sep, [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $full -PathType Leaf)){
@@ -267,10 +269,9 @@ $connectUrl = "http://localhost:$Port/connect"
 Write-Host ''
 Write-Host '  ESN Speed Friending - phone remote is running' -ForegroundColor Cyan
 Write-Host ''
-Write-Host "  Show (put this on the projector):  $showUrl"
-Write-Host "  Phone QR code:                     $connectUrl"
-Write-Host "  Access code:                       $Token"
-foreach($u in Get-LanUrls){ Write-Host "  Phone link ($($u.name)):  $($u.url)" }
+Write-Host "  Connect your phone:  $connectUrl  (opens by itself)"
+Write-Host '  Open the show from that page, and scan its QR with your phone.'
+Write-Host '  The secret key is only in that QR, and it changes every time this starts.'
 Write-Host ''
 Write-Host '  Keep this window open during the event. Close it to stop the remote.'
 Write-Host ''

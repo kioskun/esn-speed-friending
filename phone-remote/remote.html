@@ -125,7 +125,15 @@
   <div class="toast" id="toast"></div>
 
 <script>
-  const T = new URLSearchParams(location.search).get('t') || '';
+  // The secret key comes once from the QR link, is kept on this phone only,
+  // and is removed from the address bar so it can't be read or shared from there.
+  const KEY_STORE = 'esnRemoteKey';
+  let T = new URLSearchParams(location.search).get('t') || '';
+  try{
+    if(T) localStorage.setItem(KEY_STORE, T); else T = localStorage.getItem(KEY_STORE) || '';
+  } catch(e){}
+  if(location.search) history.replaceState(null, '', location.pathname);
+  const H = () => ({ 'X-Remote-Key': T });
   const $ = id => document.getElementById(id);
   let toastTimer = null, last = null;
 
@@ -150,10 +158,10 @@
     if(navigator.vibrate) navigator.vibrate(25);
     sending = true;
     try{
-      const r = await timedFetch('/api/cmd?t=' + encodeURIComponent(T) + '&k=' + encodeURIComponent(k), { method:'POST', body: body || undefined }, 2500);
+      const r = await timedFetch('/api/cmd?k=' + encodeURIComponent(k), { method:'POST', headers: H(), body: body || undefined }, 2500);
       const j = await r.json();
       sending = false;
-      if(!r.ok){ toast(j.error === 'code' ? 'Wrong code: scan the QR again' : 'Not sent'); return false; }
+      if(!r.ok){ toast(j.error === 'code' || j.error === 'blocked' ? 'Old key: scan the QR on the laptop again' : 'Not sent'); return false; }
       if(!j.showConnected){ toast('Show not connected: open it with "Open the show" on the laptop'); return false; }
       setTimeout(poll, 350);
       return true;
@@ -207,6 +215,9 @@
     $('round').textContent = 'Round ' + s.round + (s.total > 0 ? ' of ' + s.total : '');
     const flags = [];
     if(s.sound === false) flags.push('<span class="snd">NO SOUND: click the show once on the laptop</span>');
+    const c = s.cfg || {};
+    if(['city','venue','date','time'].some(k => !String(c[k] || '').trim()) || !(c.tables > 0))
+      flags.push('<span class="snd">Add the event details and tables: tap ⚙ Settings</span>');
     if(s.locked) flags.push('<span>KEYS LOCKED (tap Lock keys to unlock)</span>');
     if(s.muted) flags.push('<span>MUTED</span>');
     if(s.settings) flags.push('<span>SETTINGS OPEN</span>');
@@ -224,8 +235,9 @@
   async function poll(){
     if(polling) return; polling = true;
     try{
-      const r = await timedFetch('/api/state?t=' + encodeURIComponent(T), {}, 2500);
-      if(r.status === 403){ render(null); $('connText').textContent = 'Wrong code: scan the QR again'; }
+      if(!T){ render(null); $('connText').textContent = 'Scan the QR on the laptop to connect'; polling = false; return; }
+      const r = await timedFetch('/api/state', { headers: H() }, 2500);
+      if(r.status === 403){ render(null); $('connText').textContent = 'Old key: scan the QR on the laptop again'; }
       else render(await r.json());
     } catch(e){ render(null); }
     polling = false;

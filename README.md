@@ -10,7 +10,7 @@ It is one HTML file. There is nothing to install and no internet is needed on th
 
 1. Open `current/speed-friending-esn.html` in Chrome, on the laptop connected to the projector. Press F11 for full screen.
 2. Press any key once so the browser allows sound.
-3. Press **Esc** for Settings and check: talking time, rounds, **number of tables**, date/venue, and the feedback form link.
+3. The first time, Settings opens by itself and asks for the **event details** (city, venue, date, time) and the **number of tables**; the download has none built in. Later, Esc opens Settings: talking time, rounds, tables, event details, feedback form link. Changes show straight away, also in another open window of the show.
 4. Press **Space** to go through the intro screens.
 
 ### Keys
@@ -43,14 +43,14 @@ Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 
 5. Scan the QR on the *Connect your phone* page with the phone camera. The remote opens in the phone's browser and shows **Connected**. If there are several QRs, use the one marked "Try this one first", or whichever matches the hotspot.
 6. Move the show tab to the projector, press F11, and click once on it so sound can play.
 
-**Start the launcher and connect the phone before guests arrive, or while the projector shows something else.** The Connect page and the black window show the access code. Keep the laptop on your hotspot only, not the venue Wi-Fi.
+**Scan the QR before guests arrive, or while the projector shows something else.** The QR holds the remote's access code, so it stays hidden until you click **Show QR**, and hides itself after 60 seconds. Keep the laptop on your hotspot only, not the venue Wi-Fi.
 
 Good to know:
 - Phone buttons: the big button (it says what it will do: Next screen, Start round, Pause, Resume, Skip rotation…), **Rotate now**, **Break**, −1 min, −30 s, +30 s, +1 min, ◀ Back / Next ▶ (intro screens), Help QR, Mute, **Welcome screen**, **Lock keys**, and **⚙ Settings**.
 - **Rotate now**, **Break** and **Welcome screen** need two taps, so a pocket tap can't move the room.
 - **⚙ Settings** on the phone has the same settings as Esc on the laptop (times, rounds, volume, auto start, tables, feedback link, city, venue, date, time), with the same limits. Like on the laptop, pause the round before saving. It also has **Reset to round 1** (like 0 0, keeps the warm-up history) and **Clear seating history** (only before a new event), both with two taps. The operator-view mode stays on the laptop.
 - **Lock keys** locks the laptop keyboard and the phone together. Only Mute, Lock keys and Settings still work until you tap Unlock keys (or press L on the laptop).
-- The access code in the QR stays the same for 24 hours, even if you restart the launcher.
+- Security: the access code is 6 random letters and numbers, made new every time the launcher starts, and never saved to disk. The phone keeps it out of its address bar. A device that tries 20 wrong keys is shut out until the next start, and the show itself only opens on the laptop. After restarting the launcher, scan the QR again.
 - **Settings and seating history are stored separately** for the launcher (`http://localhost`) and for the file opened by double-click. Pick one way for the whole night, and set Settings (Esc) in that one.
 - If the phone shows "This site can't be reached / took too long to respond", Windows Firewall is blocking it (often because the prompt was closed, or the network counts as Public). On the laptop, double-click `phone-remote\allow-phone-in-firewall.bat`, click **Yes**, then restart the launcher and scan again.
 - If the phone says "Laptop not reachable", check that both are on the same hotspot and that the black window is still open. Otherwise, carry on with the keyboard or TeamViewer.
@@ -58,7 +58,8 @@ Good to know:
 ### Seating and rotation
 
 - People sit anywhere, up to 4 per table, and a volunteer hands out badges A, B, C and D so each table has different letters. Tables of 3 are fine; never seat 5.
-- **Warm-up to split friends:** once badges are out, press **R** for one rotation, then **0 0**. The event starts at round 1 with everyone at a new table.
+- **Intro (people are already seated with their badges):** Welcome → How it works → Your badge (A–D, plus the VOLUNTEER badge) → Conversation starters → **Let's mix it up!** → Get ready: round 1.
+- **Warm-up to split friends:** Space on *Let's mix it up!* runs one warm-up move; when it ends (or Space to skip) the event goes to round 1 with everyone at a new table. The old way (R, then 0 0) still works.
 - Each rotation shows how many tables each letter moves (stay, 1, 2 or 3), and **nobody ever meets the same person twice**, the warm-up included. The moves are picked at random on the first rotation of the night and then stay the same each round: a full search showed that for 5 or more rotations this is the only repeat-free way. The app remembers every move in the browser, also after a refresh or a reset.
 - **Set the number of tables in Settings.** The rule depends on it, and Settings shows how many rotations your table count allows with all-new faces. Table counts divisible by 3 allow fewer (45 tables: 14 rotations); around 50 tables allows far more than a normal night needs. If the night runs past that limit, the app picks the move with the fewest repeats and shows a warning.
 - Before a **new** event, press *Clear seating history* in Settings (it also clears itself after 12 hours).

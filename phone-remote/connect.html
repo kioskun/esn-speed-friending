@@ -13,24 +13,24 @@
   .card.best{ border-color:#7AC143; box-shadow:0 0 0 2px rgba(122,193,67,.35) }
   .qr{ background:#fff; border-radius:10px; padding:10px; width:268px; height:268px }
   .qr svg{ width:100%; height:100% }
-  .url{ font-family:Consolas,monospace; font-size:13px; word-break:break-all; margin-top:8px; color:#9fe0ff }
   .name{ font-size:13px; color:rgba(255,255,255,.6); margin-top:6px }
-  .code{ font-size:22px; font-weight:800; letter-spacing:3px; color:#7AC143 }
-  a.btn{ display:inline-block; padding:12px 18px; border-radius:12px; background:rgba(0,174,239,.2); border:1px solid #00AEEF; color:#fff; text-decoration:none; font-weight:700 }
+  a.btn, button.btn{ display:inline-block; padding:12px 18px; border-radius:12px; background:rgba(0,174,239,.2); border:1px solid #00AEEF; color:#fff; text-decoration:none; font-weight:700; font-size:16px; font-family:inherit; cursor:pointer }
+  button.qrbtn{ background:rgba(122,193,67,.2); border-color:#7AC143 }
   .warn{ color:#F47B20 }
 </style>
 </head>
 <body>
   <h1>Connect your phone</h1>
-  <p>1. Put the phone and this laptop on the <b>same Wi-Fi or phone hotspot</b>.<br>
-     2. Scan the QR with the phone camera. The remote opens in the phone browser; keep that page open.<br>
-     3. Open the show (button below), move it to the projector and press F11. Click once on the show so sound can play.</p>
-  <p>Access code: <span class="code" id="code">…</span> · Keyboard and TeamViewer keep working as normal.</p>
+  <p>1. Put the phone and this laptop on the <b>same phone hotspot</b>.<br>
+     2. Click <b>Open the show</b>, move it to the projector and press F11. Click once on the show so sound can play.<br>
+     3. Click <b>Show QR</b> and scan it with the phone camera. Do this before guests arrive or while the projector shows something else: the QR holds the remote's code, which is new every time the launcher starts. It hides itself after 60 seconds.</p>
   <p><a class="btn" href="/" target="_blank">Open the show</a> &nbsp; <span id="showStatus">Checking the show…</span></p>
+  <p><button class="btn qrbtn" id="qrBtn">Show QR for the phone</button> <span id="qrTimer"></span></p>
   <div class="cards" id="cards"></div>
   <p id="note"></p>
-  <p style="font-size:14px;color:rgba(255,255,255,.65)">Phone can't open it? Use a phone hotspot (venue Wi-Fi often blocks this), and allow <i>Windows PowerShell</i> in the Windows Firewall prompt (tick Private and Public).
-  Settings (Esc) are saved separately for this address: set them here, in the show opened from this page. Don't click inside the black launcher window, because that can pause it.</p>
+  <p style="font-size:14px;color:rgba(255,255,255,.65)">Phone can't open it? Use a phone hotspot (venue Wi-Fi often blocks this), and run <i>phone-remote\allow-phone-in-firewall.bat</i> once on this laptop.
+  A new key is made every time the launcher starts, so after a restart scan the QR again. Keyboard and TeamViewer keep working as normal.
+  Settings (Esc) are saved separately for this address: set them in the show opened from this page. Don't click inside the black launcher window, because that can pause it.</p>
 <script>
   // Live check: is a show (opened with the button above) talking to the remote?
   async function checkShow(){
@@ -43,22 +43,37 @@
   }
   checkShow(); setInterval(checkShow, 1500);
 
-  fetch('/api/info', { cache:'no-store' }).then(r => r.json()).then(info => {
-    document.getElementById('code').textContent = info.token;
+  // The QR carries the secret key: shown only on request, for 60 seconds
+  let hideTimer = null, countdown = null;
+  function hideQr(){
+    document.getElementById('cards').innerHTML = '';
+    document.getElementById('note').textContent = '';
+    document.getElementById('qrTimer').textContent = '';
+    document.getElementById('qrBtn').textContent = 'Show QR for the phone';
+    clearTimeout(hideTimer); clearInterval(countdown); hideTimer = null;
+  }
+  async function showQr(){
+    const info = await (await fetch('/api/info', { cache:'no-store' })).json();
     const cards = document.getElementById('cards');
+    cards.innerHTML = '';
     if(info.localOnly){ document.getElementById('note').innerHTML = '<span class="warn">Started in this-computer-only mode: phones cannot connect.</span>'; }
-    if(!info.urls.length){ document.getElementById('note').innerHTML = '<span class="warn">This laptop is not on any network. Connect it to the phone hotspot, then reload this page.</span>'; return; }
+    if(!info.urls.length){ document.getElementById('note').innerHTML = '<span class="warn">This laptop is not on any network. Connect it to the phone hotspot, then click Show QR again.</span>'; return; }
     info.urls.forEach((u, i) => {
       const q = qrcode(0, 'M'); q.addData(u.url); q.make();
       const d = document.createElement('div');
       d.className = 'card' + (i === 0 && u.gateway ? ' best' : '');
       d.innerHTML = '<div class="qr">' + q.createSvgTag({ cellSize:4, margin:0, scalable:true }) + '</div>'
-        + '<div class="name">' + (i === 0 && u.gateway ? 'Try this one first · ' : '') + u.name + ' · ' + u.ip + '</div>'
-        + '<div class="url">' + u.url + '</div>';
+        + '<div class="name">' + (i === 0 && u.gateway ? 'Try this one first · ' : '') + u.name + ' · ' + u.ip + ' · code ' + info.token + '</div>';
       cards.appendChild(d);
     });
-    if(info.urls.length > 1) document.getElementById('note').textContent = 'The laptop is on more than one network. Use the QR for the network your phone is on (the hotspot or venue Wi-Fi).';
-  });
+    if(info.urls.length > 1) document.getElementById('note').textContent = 'The laptop is on more than one network. Use the QR for the network your phone is on (the hotspot).';
+    document.getElementById('qrBtn').textContent = 'Hide QR';
+    let left = 60;
+    document.getElementById('qrTimer').textContent = 'Hides in ' + left + ' s';
+    countdown = setInterval(() => { left--; document.getElementById('qrTimer').textContent = 'Hides in ' + left + ' s'; }, 1000);
+    hideTimer = setTimeout(hideQr, 60000);
+  }
+  document.getElementById('qrBtn').addEventListener('click', () => { if(hideTimer) hideQr(); else showQr(); });
 </script>
 </body>
 </html>

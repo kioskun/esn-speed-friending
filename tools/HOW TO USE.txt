@@ -7,8 +7,9 @@ THE SHOW
   1. Open  app\speed-friending-esn.html  in Chrome (double-click it).
   2. Drag it to the projector and press F11 for full screen.
   3. Press any key once, so the browser allows sound.
-  4. Press Esc for Settings: talking time, number of rounds, NUMBER OF TABLES,
-     date / time / venue, feedback form link. Save.
+  4. The first time, Settings opens by itself: fill in the city, venue, date,
+     time and NUMBER OF TABLES, then Save. (Esc opens Settings any time:
+     talking time, rounds, feedback form link...)
   5. Press Space to go through the intro screens and start the rounds.
 
   Keys: Space = next / start / pause    R = rotate now    B = break
@@ -20,7 +21,9 @@ THE SHOW
 SEATING
   - Up to 4 people per table, anywhere. A volunteer hands out badges A, B, C, D
     so every table has different letters. Tables of 3 are fine; never 5.
-  - Warm-up to split friends: after badges, press R once, then 0 0.
+  - Hand out the badges before you start the intro: people are already seated.
+  - Warm-up to split friends: Space on the "Let's mix it up!" screen does one
+    warm-up move, then round 1 starts at the new tables.
   - Nobody meets the same person twice (the warm-up counts too), as long as the
     number of tables is set in Settings.
   - Print the badges in app\Badges at 5 x 5 cm.
@@ -32,8 +35,9 @@ PHONE REMOTE (optional)
      phone-remote\allow-phone-in-firewall.bat and click Yes.
   3. Double-click phone-remote\start-phone-remote.bat. Keep the black window open.
   4. On the "Connect your phone" page: click OPEN THE SHOW (don't open the HTML
-     file yourself), and scan the QR with the phone.
-  5. Do this before guests arrive: that page shows the access code.
+     file yourself). The page then says "Show connected".
+  5. Click SHOW QR and scan it with the phone. Do this before guests arrive:
+     the QR holds the remote's code (new every start, hides after 60 s).
   Settings are saved separately for the phone-remote show, so set them there
   (Esc on the laptop, or Settings on the phone).
 

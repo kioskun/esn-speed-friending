@@ -19,7 +19,7 @@ fs.mkdirSync(stage, { recursive: true });
 
 const copy = (from, to) => fs.cpSync(path.join(ROOT, from), path.join(stage, to), { recursive: true });
 copy('current', 'app');
-for(const f of ['start-phone-remote.bat', 'allow-phone-in-firewall.bat', 'server.ps1', 'bridge.js', 'qrcode.js', 'remote.html', 'connect.html', 'wrong-code.html'])
+for(const f of ['start-phone-remote.bat', 'allow-phone-in-firewall.bat', 'server.ps1', 'bridge.js', 'qrcode.js', 'remote.html', 'connect.html'])
   copy(path.join('phone-remote', f), path.join('phone-remote', f));
 copy('feedback-form', 'feedback-form');
 copy(path.join('tools', 'HOW TO USE.txt'), 'HOW TO USE.txt');

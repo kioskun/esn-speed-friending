@@ -47,13 +47,13 @@ async function seededContext(browser, cfg, withClock){
   if(withClock) await ctx.clock.install({ time: new Date('2026-09-29T18:00:00') });
   await ctx.addInitScript(([k, c]) => {
     if(!sessionStorage.getItem('seeded')){ localStorage.clear(); localStorage.setItem(k, JSON.stringify(c)); sessionStorage.setItem('seeded', '1'); }
-  }, [CFG_KEY, cfg]);
+  }, [CFG_KEY, { city:'Thessaloniki', venue:'Test venue', date:'29/09/2026', time:'19:00', tables:50, ...cfg }]);
   return ctx;
 }
 
 const SP = ' ';
 const STATES = {
-  welcome: [], tutorial: [SP], helpIntro: [SP,SP,SP,SP,SP], between: [SP,SP,SP,SP,SP,SP],
+  welcome: [], tutorial: [SP], helpIntro: [SP,SP,SP], warmup: [SP,SP,SP,SP], between: [SP,SP,SP,SP,SP,SP],
   timerRunning: [SP,SP,SP,SP,SP,SP,SP,{run:11e3}], timerPaused: [SP,SP,SP,SP,SP,SP,SP,{run:11e3},SP],
   rotation: [SP,SP,SP,SP,SP,SP,'r'], break: [SP,SP,SP,SP,SP,SP,'b'], helpFull: [SP,SP,SP,SP,SP,SP,'h'],
   finished: [SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}],
@@ -128,6 +128,8 @@ async function phoneRun(browser, token){
   const pp = await ph.newPage();
   pp.on('pageerror', e => errs.push('phone: ' + e.message));
   await pp.goto(`${BASE}/remote?t=${token}`);
+  await sleep(300);
+  if(pp.url().includes(token)) fail('the key stays in the phone address bar');
   const S = () => sp.evaluate(snapJs());
   const until = async (label, fn, ms = 5000) => {
     const t0 = Date.now();
@@ -253,15 +255,38 @@ async function phoneRun(browser, token){
   console.log('Phone page run-through: done');
 }
 
+// 4. A device that keeps guessing is shut out (runs last: it blocks this test's "phone")
+async function lockout(token){
+  for(let i = 0; i < 20; i++) await fetch(`${BASE}/api/state`, { headers: { ...phone, 'X-Remote-Key': 'guess' + i } });
+  const r = await fetch(`${BASE}/api/state`, { headers: { ...phone, 'X-Remote-Key': token } });
+  if(r.status !== 403) fail('a device was not shut out after 20 wrong keys');
+  if(!(await fetch(`${BASE}/api/state`)).ok) fail('the laptop itself was shut out');
+  console.log('Lockout after wrong keys: done');
+}
+
 // 3. Safety checks
 async function safety(browser, token){
   const bad = await fetch(`${BASE}/api/cmd?t=WRONG1&k=r`, { method: 'POST', headers: phone });
   if(bad.status !== 403) fail('wrong code was accepted');
   const bad2 = await fetch(`${BASE}/api/cmd?t=${token}&k=0`, { method: 'POST', headers: phone });
   if(bad2.status !== 400) fail('a key outside the phone list (0 = reset) was accepted');
-  const wrongPage = await (await fetch(`${BASE}/remote?t=NOPE`, { headers: phone })).text();
-  if(!wrongPage.includes('old or missing code')) fail('wrong-code page not shown');
+  // The code: 6 random letters/numbers (header or the QR's ?t=)
+  if(!/^[2-9A-HJKMNP-Z]{6}$/.test(token)) fail('access code is not 6 random letters/numbers: ' + token);
+  if((await fetch(`${BASE}/api/state`, { headers: { ...phone, 'X-Remote-Key': token } })).status !== 200) fail('right code in the header refused');
+  if((await fetch(`${BASE}/api/state`, { headers: { ...phone, 'X-Remote-Key': token.slice(1) + (token[0] === '2' ? '3' : '2') } })).status !== 403) fail('wrong code accepted');
+  // ...and a new one on every start
+  const PORT2 = PORT + 1;
+  const ps0 = process.platform === 'win32' ? 'powershell' : 'pwsh';
+  const other = spawn(ps0, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'phone-remote', 'server.ps1'), '-Port', String(PORT2), '-LocalOnly', '-NoBrowser', '-TestMode']);
+  let token2 = null;
+  for(let i = 0; i < 100 && !token2; i++){ try{ token2 = (await (await fetch(`http://127.0.0.1:${PORT2}/api/info`)).json()).token; } catch { await sleep(200); } }
+  other.kill();
+  if(!token2 || token2 === token) fail(`the code did not change on a new start (${token} / ${token2})`);
+  if((await fetch(`${BASE}/api/state`, { headers: phone })).status !== 403) fail('state given to a phone without a key');
+  const page = await (await fetch(`${BASE}/remote`, { headers: phone })).text();
+  if(page.includes(token)) fail('the phone page contains the key');
   if((await fetch(`${BASE}/`, { headers: phone })).status !== 403) fail('show served to a phone without the code');
+  if((await fetch(`${BASE}/?t=${token}`, { headers: phone })).status !== 403) fail('show served to a phone (it should be laptop only)');
   if((await fetch(`${BASE}/connect`, { headers: phone })).status !== 403) fail('connect page (with the code) served to a phone');
   if((await fetch(`${BASE}/api/sync?since=0`, { method: 'POST', headers: phone, body: '{}' })).status !== 403) fail('a phone could pretend to be the show');
   for(const p of ['/..%2fREADME.md', '/..%5cREADME.md', '/%2e%2e/README.md'])
@@ -329,6 +354,7 @@ async function safety(browser, token){
     await safety(browser, info.token);
     await phoneRun(browser, info.token);
     await equivalence(browser, info.token);
+    await lockout(info.token);
   } catch(e){ fail('test crashed: ' + (e.stack || e.message)); }
   finally{ if(browser) await browser.close(); srv.kill(); }
   if(failures.length){ console.log(`\nFAIL: ${failures.length} problem(s)`); process.exit(1); }

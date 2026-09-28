@@ -14,17 +14,21 @@ const { chromium } = require('playwright');
 
 const APP = pathToFileURL(path.join(__dirname, '..', 'current', 'speed-friending-esn.html')).href;
 const CFG_KEY = 'esn_sf_cfg_v8';
+// A filled-in event (a fresh download has none, and then Settings opens by itself)
+const EVENT = { city:'Thessaloniki', venue:'Test venue', date:'29/09/2026', time:'19:00', tables:50 };
 
-const INTRO = ['welcome','tutorial','seating','badges','volunteers','helpIntro'];
+// Intro: Welcome, How it works, Your badge, Conversation starters, Warm-up.
+// Space on Warm-up starts the warm-up rotation; Space again skips it to round 1.
+const INTRO = ['welcome','tutorial','badges','helpIntro','warmup'];
 const SP = { key:' ' };
 // How to reach each state from a fresh start (Welcome screen)
 const STATES = {
   welcome:        { keys:[] },
   tutorial:       { keys:[SP] },
-  seating:        { keys:[SP,SP] },
-  badges:         { keys:[SP,SP,SP] },
-  volunteers:     { keys:[SP,SP,SP,SP] },
-  helpIntro:      { keys:[SP,SP,SP,SP,SP] },
+  badges:         { keys:[SP,SP] },
+  helpIntro:      { keys:[SP,SP,SP] },
+  warmup:         { keys:[SP,SP,SP,SP] },
+  warmupMove:     { keys:[SP,SP,SP,SP,SP] },
   between:        { keys:[SP,SP,SP,SP,SP,SP] },
   betweenRound3:  { keys:[SP,SP,SP,SP,SP,SP, SP,{run:11e3},{run:61e3},SP, SP,{run:11e3},{run:61e3},SP] },
   startCountdown: { keys:[SP,SP,SP,SP,SP,SP,SP] },
@@ -35,12 +39,13 @@ const STATES = {
   timerLast10s:   { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:52e3}] },
   rotation:       { keys:[SP,SP,SP,SP,SP,SP,{key:'r'}] },
   rotationAuto:   { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
-  warmupRotation: { keys:[SP,SP,SP,{key:'r'}] },
+  manualWarmup:   { keys:[SP,SP,{key:'r'}] },   // the old way: R on an intro screen, then 0 0
   break:          { keys:[SP,SP,SP,SP,SP,SP,{key:'b'}] },
   helpFull:       { keys:[SP,SP,SP,SP,SP,SP,{key:'h'}] },
   finished:       { cfg:{ totalRounds:1 }, keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
   finishedQr:     { cfg:{ totalRounds:1, feedbackUrl:'https://forms.gle/example123' }, keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
   settingsOpen:   { keys:[SP,SP,SP,SP,SP,SP,{key:'g'}] },
+  setupPrompt:    { cfg:{ city:'', venue:'', date:'', time:'', tables:0 }, keys:[{run:1000}] },
 };
 const KEYS = [
   { name:'Space', seq:[' '] }, { name:'Right', seq:['ArrowRight'] }, { name:'Left', seq:['ArrowLeft'] },
@@ -65,6 +70,9 @@ function snapshotJs(){
     opWin: !!(opWin && !opWin.closed),
     seatInfo: modal.querySelector('#seatInfo').textContent,
     settingsInOpWin: modal.ownerDocument !== document,
+    warm: warmupRotation,
+    setupNote: modal.querySelector('#setupNote').style.display !== 'none',
+    evInfo: document.getElementById('evInfo').textContent,
     helpPrev: helpFullPrev
   })`;
 }
@@ -99,20 +107,21 @@ function expected(stateName, key, b, a){
   switch(key){
     case 'Space': {
       const i = INTRO.indexOf(b.active);
-      if(i >= 0) is(i < INTRO.length-1 ? INTRO[i+1] : 'between');
+      if(b.active === 'warmup'){ is('rotation'); if(!a.warm || a.hist !== b.hist + 1 || a.currentRound !== 1) errs.push('Space on Warm-up did not start the warm-up move'); }
+      else if(i >= 0) is(INTRO[i+1]);
       else if(b.active === 'between') is('startCountdown');
-      else if(b.active === 'rotation' || b.active === 'break') is(b.active === 'rotation' && b.currentRound >= 6 ? 'finished' : 'between');
+      else if(b.active === 'rotation' || b.active === 'break') is(b.active === 'rotation' && b.currentRound >= 6 && !b.warm ? 'finished' : 'between');
       else if(b.active === 'timer' && b.status === 'READY') is(stateName === 'timerReady' ? 'timer' : 'between');
       else if(b.active === 'timer'){ is('timer'); if(a.isPaused === b.isPaused) errs.push('Space did not pause/resume'); }
       else same();
-      if(b.active === 'rotation' && a.active === 'between' && a.currentRound !== b.currentRound + 1) errs.push('round did not advance after rotation');
+      if(b.active === 'rotation' && a.active === 'between' && a.currentRound !== b.currentRound + (b.warm ? 0 : 1)) errs.push(b.warm ? 'warm-up move changed the round number' : 'round did not advance after rotation');
       break;
     }
-    case 'Right': { const i = INTRO.indexOf(b.active); if(i >= 0) is(i < INTRO.length-1 ? INTRO[i+1] : 'between'); else same(); break; }
+    case 'Right': { const i = INTRO.indexOf(b.active); if(b.active === 'warmup') is('rotation'); else if(i >= 0) is(INTRO[i+1]); else same(); break; }
     case 'Left': {
       const i = INTRO.indexOf(b.active);
       if(i > 0) is(INTRO[i-1]);
-      else if(b.active === 'between' && b.currentRound === 1) is('helpIntro');
+      else if(b.active === 'between' && b.currentRound === 1) is('warmup');
       else same();
       break;
     }
@@ -123,7 +132,8 @@ function expected(stateName, key, b, a){
       break;
     case 'B':
       if(b.active === 'finished'){ same(); break; }
-      is(b.active === 'rotation' && b.currentRound >= 6 ? 'finished' : 'break');
+      is(b.active === 'rotation' && b.currentRound >= 6 && !b.warm ? 'finished' : 'break');
+      if(b.active === 'rotation' && b.warm && a.currentRound !== 1) errs.push('break after the warm-up move changed the round');
       break;
     case 'G': case 'Esc':
       if(settingsLocked){ if(a.settings) errs.push('Settings opened while the timer runs'); }
@@ -169,7 +179,7 @@ async function runCombo(browser, stateName, key, lock, mode){
   const page = await ctx.newPage();
   page.on('pageerror', e => failures.push(`${where}: page error ${e.message}`));
   await ctx.clock.install({ time: new Date('2026-09-29T18:00:00') });
-  const cfg = { hudMode: mode, talkMin:1, rotateMin:1, breakMin:1, ...(st.cfg || {}) };
+  const cfg = { ...EVENT, hudMode: mode, talkMin:1, rotateMin:1, breakMin:1, ...(st.cfg || {}) };
   await ctx.addInitScript(([k, c]) => {
     if(!sessionStorage.getItem('seeded')){ localStorage.clear(); localStorage.setItem(k, JSON.stringify(c)); sessionStorage.setItem('seeded','1'); }
   }, [CFG_KEY, cfg]);
@@ -183,7 +193,10 @@ async function runCombo(browser, stateName, key, lock, mode){
   if(lock){ await kb.press('l'); await ctx.clock.runFor(50); }
   const before = await page.evaluate(snapshotJs());
   failures.push(...invariants(before, where + ' (before key)'));
-  if(stateName !== 'settingsOpen' && before.settings) failures.push(`${where}: Settings open during setup`);
+  if(stateName !== 'settingsOpen' && stateName !== 'setupPrompt' && before.settings) failures.push(`${where}: Settings open during setup`);
+  if(stateName === 'setupPrompt' && !(before.settings && before.setupNote && before.active === 'welcome'))
+    failures.push(`${where}: a new event without details did not open Settings with the event-details note`);
+  if(stateName !== 'setupPrompt' && before.setupNote && before.settings) failures.push(`${where}: event-details note shown although the details are filled in`);
   if(stateName.startsWith('finished')){
     const wantQr = stateName === 'finishedQr';
     if(before.active !== 'finished') failures.push(`${where}: did not reach Thank you`);
@@ -223,14 +236,16 @@ async function fullNight(browser, tables){
   page.on('pageerror', e => failures.push(`night: page error ${e.message}`));
   await ctx.clock.install({ time: new Date('2026-09-29T18:00:00') });
   await ctx.addInitScript(([k, c]) => { if(!sessionStorage.getItem('seeded')){ localStorage.clear(); localStorage.setItem(k, JSON.stringify(c)); sessionStorage.setItem('seeded','1'); } },
-    [CFG_KEY, { tables, totalRounds:6, talkMin:1, rotateMin:1 }]);
+    [CFG_KEY, { ...EVENT, tables, totalRounds:6, talkMin:1, rotateMin:1 }]);
   await page.goto(APP);
   const kb = page.keyboard;
-  for(let i = 0; i < 3; i++) await kb.press(' ');           // to the badges screen
-  await kb.press('r'); await ctx.clock.runFor(1000);         // warm-up rotation
-  await kb.press('0'); await kb.press('0');                  // reset to round 1
+  for(let i = 0; i < 4; i++) await kb.press(' ');           // Welcome -> Warm-up screen
+  await kb.press(' '); await ctx.clock.runFor(1000);         // Space: warm-up move
   let s = await page.evaluate(snapshotJs());
-  if(s.active !== 'between' || s.currentRound !== 1 || s.hist !== 2) failures.push(`night: after warm-up reset ${JSON.stringify({a:s.active,r:s.currentRound,h:s.hist})}`);
+  if(s.active !== 'rotation' || !s.warm) failures.push('night: Space on Warm-up did not start the warm-up move');
+  await ctx.clock.runFor(61e3);                              // warm-up move time runs out
+  s = await page.evaluate(snapshotJs());
+  if(s.active !== 'between' || s.currentRound !== 1 || s.hist !== 2) failures.push(`night: after the warm-up ${JSON.stringify({a:s.active,r:s.currentRound,h:s.hist})}`);
   // Refresh mid-event must keep the history
   await page.reload(); await ctx.clock.runFor(500);
   s = await page.evaluate(snapshotJs());
@@ -264,6 +279,32 @@ async function fullNight(browser, tables){
   return { failures, moves: hist };
 }
 
+// Fresh download: Settings asks for the event details; saving them shows them on
+// Welcome, and a second window of the show picks them up straight away.
+async function eventSetup(browser){
+  const f = [];
+  const ctx = await browser.newContext({ viewport:{ width:1280, height:720 } });
+  await ctx.addInitScript(() => { if(!sessionStorage.getItem('seeded')){ localStorage.clear(); sessionStorage.setItem('seeded','1'); } });
+  const a = await ctx.newPage(); await a.goto(APP); await a.waitForTimeout(800);
+  const b = await ctx.newPage(); await b.goto(APP); await b.waitForTimeout(800);
+  if(!(await a.evaluate(snapshotJs())).settings) f.push('event setup: Settings did not open for a fresh download');
+  const info0 = await b.evaluate(() => document.getElementById('evInfo').textContent + '|' + document.getElementById('evCity').textContent);
+  if(info0 !== '|') f.push('event setup: fresh download still shows built-in event details: ' + info0);
+  await a.fill('#setCity', 'Thessaloniki'); await a.fill('#setVenue', 'Somewhere'); await a.fill('#setDate', '29/09/2026');
+  await a.fill('#setTime', '19:00'); await a.fill('#setTables', '50'); await a.fill('#setTalkMin', '12');
+  await a.click('#btnSave'); await a.waitForTimeout(500);
+  const sa = await a.evaluate(snapshotJs());
+  if(sa.settings) f.push('event setup: Settings did not close after Save');
+  if(sa.evInfo !== '29/09/2026 | 19:00 | Somewhere') f.push('event setup: Welcome shows ' + sa.evInfo);
+  const sb = await b.evaluate(() => ({ info: document.getElementById('evInfo').textContent, city: document.getElementById('evCity').textContent, talk: cfg.talkMin }));
+  if(sb.info !== '29/09/2026 | 19:00 | Somewhere' || sb.city !== 'Thessaloniki' || sb.talk !== 12) f.push('event setup: the other open show did not update: ' + JSON.stringify(sb));
+  await a.reload(); await a.waitForTimeout(800);
+  if((await a.evaluate(snapshotJs())).settings) f.push('event setup: Settings opened again although the details are filled in');
+  await ctx.close();
+  console.log('Event setup prompt and live refresh: ' + (f.length ? 'problems' : 'ok'));
+  return f;
+}
+
 (async () => {
   const browser = await chromium.launch(process.env.CI ? {} : { channel:'chrome' }).catch(() => chromium.launch());
   const combos = [];
@@ -285,6 +326,8 @@ async function fullNight(browser, tables){
     }
   }));
   console.log(`Key test: ${combos.length} combinations (${Object.keys(STATES).length} states x ${KEYS.length} keys x lock on/off x 2 operator modes)`);
+
+  failures.push(...await eventSetup(browser));
 
   for(const tables of [50, 47, 48]){
     const n = await fullNight(browser, tables);

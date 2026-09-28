@@ -571,6 +571,10 @@
     }
     .field .hint{font-size:12px;color:rgba(255,255,255,.55);line-height:1.35}
     .field .warn-text{font-size:12px;color:var(--warn);line-height:1.35}
+    .setup-note{margin-top:12px;padding:10px 12px;border-radius:12px;border:1px solid var(--warn);background:rgba(255,200,0,.10);font-size:14px;line-height:1.4}
+    .field input.need{border-color:var(--warn);box-shadow:0 0 0 2px rgba(255,200,0,.25)}
+    .volunteer-line{display:flex;align-items:center;justify-content:center;gap:clamp(10px,1.5vw,18px);margin-top:clamp(8px,1.5vh,18px);font-size:clamp(16px,2.2vmin,26px)}
+    .volunteer-line img{width:clamp(48px,7vmin,84px);height:auto;border-radius:10px}
     .section-head{grid-column:1 / -1;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);
       font-size:1.05em;color:var(--safe);letter-spacing:.8px;text-transform:uppercase}
     .title{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -670,8 +674,8 @@
   <!-- ========================= -->
   <div id="welcome" class="screen active">
     <div class="screen-content">
-      <div class="screen-title breath" style="position:relative;top:auto;left:auto;right:auto;margin-bottom:clamp(12px, 2vh, 28px);">ESN Speed Friending<br><span id="evCity">Thessaloniki</span></div>
-      <div class="event-info" id="evInfo">09/02/2026 | 18:00 | To Podilato</div>
+      <div class="screen-title breath" style="position:relative;top:auto;left:auto;right:auto;margin-bottom:clamp(12px, 2vh, 28px);">ESN Speed Friending<span id="evCity" style="display:block"></span></div>
+      <div class="event-info" id="evInfo"></div>
       <p>New city. New adventures. New friends.</p>
     </div>
     <div class="screen-footer">
@@ -702,7 +706,7 @@
           <div class="card-label">Rotate to next table</div>
         </div>
       </div>
-      <p>Relax → Meet New People → Repeat</p>
+      <p id="howNums">Relax → Meet New People → Repeat</p>
     </div>
     <div class="screen-footer">
       <div class="action-buttons">
@@ -736,10 +740,11 @@
           <figcaption>Group D</figcaption>
         </figure>
       </div>
-      <p class="intro-note">Keep your badge visible. When it is time to rotate, the screen shows where each letter moves.</p>
+      <p class="intro-note">Keep your badge visible. When it is time to move, the screen shows where each letter goes.</p>
+      <div class="volunteer-line"><img src="Badges/Volunteer%20Badges%205x5cm.png" alt="Volunteer badge" width="650" height="650" /><span>Questions? Ask anyone wearing a <b>VOLUNTEER</b> badge.</span></div>
     </div>
     <div class="screen-footer">
-      <button type="button" class="action-btn" onclick="spaceAction()">Press <b>Space</b> to meet the volunteers</button>
+      <button type="button" class="action-btn" onclick="spaceAction()">Press <b>Space</b> to continue</button>
     </div>
   </div>
 
@@ -778,7 +783,32 @@
     </div>
     <div class="screen-footer">
       <div class="action-buttons">
-        <div class="action-btn" onclick="spaceAction()">Press <b>Space</b> when everyone has a badge</div>
+        <div class="action-btn" onclick="spaceAction()">Press <b>Space</b> to continue</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================= -->
+  <!-- WARM-UP                    -->
+  <!-- ========================= -->
+  <div id="warmup" class="screen">
+    <div class="screen-content">
+      <div class="screen-title breath" style="color:var(--safe);position:relative;top:auto;left:auto;right:auto;margin-bottom:clamp(12px, 2vh, 28px);">LET'S MIX IT UP!</div>
+      <div class="card-container">
+        <div class="info-card">
+          <div class="card-icon">👯</div>
+          <div class="card-label">Sitting with friends? Not for long</div>
+        </div>
+        <div class="info-card">
+          <div class="card-icon">🔀</div>
+          <div class="card-label">Follow your letter to a new table</div>
+        </div>
+      </div>
+      <p>A quick warm-up move, then round 1 starts with new faces.</p>
+    </div>
+    <div class="screen-footer">
+      <div class="action-buttons">
+        <div class="action-btn" onclick="spaceAction()">Press <b>Space</b> for the warm-up move</div>
       </div>
     </div>
   </div>
@@ -813,9 +843,9 @@
   <!-- ========================= -->
   <div id="between" class="screen">
     <div class="screen-content">
-      <div class="screen-title breath" style="color:var(--safe);position:relative;top:auto;left:auto;right:auto;margin-bottom:clamp(12px, 2vh, 28px);">GET SEATED</div>
+      <div class="screen-title breath" style="color:var(--safe);position:relative;top:auto;left:auto;right:auto;margin-bottom:clamp(12px, 2vh, 28px);">GET READY</div>
       <h2 id="betweenTitle">Next round coming up</h2>
-      <p>Volunteers may guide movement. When ready…</p>
+      <p>Found your table? Say hi to your new faces. Volunteers can help you find the way.</p>
     </div>
     <div class="screen-footer">
       <div class="action-buttons">
@@ -930,6 +960,7 @@
         <h4>Settings</h4>
         <span>Press Esc to close</span>
       </div>
+      <div class="setup-note" id="setupNote" style="display:none">Before the show: fill in the <b>event details</b> at the bottom (city, venue, date, time) and the <b>number of tables</b>, then Save. Esc skips this for now.</div>
       <div class="grid">
         <div class="field">
           <label>Talking duration (minutes)</label>
@@ -3311,10 +3342,10 @@ const DEFAULTS = {
   autoNext: true,
   tables: 0,
   hudMode: 'projector',
-  city: 'Thessaloniki',
-  venue: 'To Podilato',
-  date: '09/02/2026',
-  time: '18:00',
+  city: '',          // event details are set per event (Settings asks at start)
+  venue: '',
+  date: '',
+  time: '',
   feedbackUrl: ''
 };
 let cfg = loadConfig();
@@ -3489,8 +3520,9 @@ function stopTick(){
    STATE MANAGEMENT
 =========================== */
 // Intro screens in order (seat first, badges are handed out at the table)
-const INTRO = ['welcome','tutorial','seating','badges','volunteers','helpIntro'];
-const screens = ['welcome','tutorial','badges','volunteers','seating','helpIntro','between','startCountdown','timer','rotation','break','helpFull','finished'];
+// People are already seated with their badges when the intro starts.
+const INTRO = ['welcome','tutorial','badges','helpIntro','warmup'];
+const screens = ['welcome','tutorial','badges','volunteers','seating','helpIntro','warmup','between','startCountdown','timer','rotation','break','helpFull','finished'];
 let active = 'welcome';
 let currentRound = 1;
 
@@ -3670,13 +3702,14 @@ let opWin = null;
 
 const SCREEN_LABEL = {
   welcome:'Welcome', tutorial:'How it works', seating:'Take a seat', badges:'Badges',
-  volunteers:'Volunteers', helpIntro:'Conversation starters', between:'Get seated',
+  volunteers:'Volunteers', helpIntro:'Conversation starters', warmup:'Warm-up', between:'Get ready',
   startCountdown:'Round countdown', timer:'Conversation', rotation:'Rotation',
   break:'Break', helpFull:'Help (QR)', finished:'Thank you'
 };
 
 function spaceHint(){
-  if(INTRO.includes(active)) return active === INTRO[INTRO.length-1] ? 'Go to Get Seated' : 'Next screen';
+  if(active === 'warmup') return 'Start warm-up move';
+  if(INTRO.includes(active)) return 'Next screen';
   if(active === 'between') return 'Start countdown';
   if(active === 'timer'){
     const st = document.getElementById('status').textContent;
@@ -4189,6 +4222,7 @@ function runRotTimer(){
 
 function triggerRotation(manual=true){
   stopAllTimers();
+  warmupRotation = false;
   roundMoves = pickRotationMoves();
   rotLeft = cfg.rotateMin*60;
   document.getElementById('rotNum').textContent = formatTime(rotLeft);
@@ -4208,7 +4242,20 @@ function skipRotationEarly(){
   }
 }
 
+// The warm-up rotation (from the intro) is followed by round 1, not round 2
+let warmupRotation = false;
+function startWarmup(){
+  triggerRotation(true);
+  warmupRotation = true;
+  updateHud();
+}
+
 function advanceRound(){
+  if(warmupRotation){
+    warmupRotation = false;
+    updateRoundBadge(); updateProgress();
+    return false;
+  }
   const total = cfg.totalRounds;
   const finished = !!(total && total > 0 && currentRound >= total);
   if(!finished) currentRound++;
@@ -4318,12 +4365,14 @@ function handleWelcomeKey(){
   if(!welcomeArmed){ armWelcome(); fallback('tick'); return; }
   welcomeArmed = false;
   stopAllTimers();
+  warmupRotation = false;
   setTimerReady();       // conversation timer back to a full, ready round
   show('welcome');
 }
 
 function resetEvent(){
   stopAllTimers();
+  warmupRotation = false;
   currentRound = 1;
   roundMoves = null; lastRandom = null;   // seating history is kept (warm-up)
   updateRoundBadge();
@@ -4341,6 +4390,7 @@ function spaceAction(){
   unlockAudio();
 
   if(active === 'finished'){ return; }
+  if(active === 'warmup'){ startWarmup(); return; }
   const ii = INTRO.indexOf(active);
   if(ii >= 0){
     if(ii < INTRO.length-1) show(INTRO[ii+1]); else gotoBetween();
@@ -4356,7 +4406,7 @@ function spaceAction(){
 }
 
 /* Welcome/intro screens, in order. Left arrow goes back one; from the first
-   Get Seated screen (before any round has started) it returns to seating. */
+   Get Ready screen (before any round has started) it returns to the warm-up. */
 function introBack(){
   const i = INTRO.indexOf(active);
   if(i > 0){ show(INTRO[i-1]); return; }
@@ -4407,7 +4457,27 @@ document.getElementById('btnClearSeating').addEventListener('click', ()=>{
   clearSeating(); lastRepeats = 0; updateSeatInfo(); updateHud(); showToast('Seating history cleared');
 });
 
+// Event details are empty in a fresh download: Settings asks for them
+function eventInfoMissing(){
+  return ['city','venue','date','time'].some(k => !(cfg[k] || '').trim()) || !(cfg.tables > 0);
+}
+function markMissingEventInfo(){
+  const note = modal.querySelector('#setupNote');
+  if(note) note.style.display = eventInfoMissing() ? '' : 'none';
+  [[setCity,'city'],[setVenue,'venue'],[setDate,'date'],[setTime,'time']].forEach(([el, k]) => el.classList.toggle('need', !(cfg[k] || '').trim()));
+  setTables.classList.toggle('need', !(cfg.tables > 0));
+}
+
+function applyHowItWorks(){
+  const el = document.getElementById('howNums');
+  if(!el) return;
+  const parts = ['Up to 4 per table', `${cfg.talkMin}-minute chats`];
+  if(cfg.totalRounds > 0) parts.push(`${cfg.totalRounds} rounds`);
+  el.textContent = parts.join(' · ');
+}
+
 function applyEventInfo(){
+  applyHowItWorks();
   document.getElementById('evCity').textContent = cfg.city;
   document.getElementById('evInfo').textContent = [cfg.date, cfg.time, cfg.venue].filter(x => x && x.trim()).join(' | ');
 }
@@ -4437,6 +4507,7 @@ function openSettings(){
   setTime.value = cfg.time;
   setFeedback.value = cfg.feedbackUrl || '';
   updateSeatInfo();
+  markMissingEventInfo();
   volLabel.textContent = cfg.volume + "%";
 }
 
@@ -4535,7 +4606,7 @@ function saveProgress(){
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({
       active, currentRound, timeLeft, rotLeft, breakLeft, isPaused, readyToStart,
       status: document.getElementById('status').textContent,
-      helpFullPrev, roundMoves, lastRandom, savedAt: Date.now()
+      helpFullPrev, roundMoves, lastRandom, warmupRotation, savedAt: Date.now()
     }));
   } catch {}
 }
@@ -4548,6 +4619,7 @@ function restoreProgress(){
   if(p.active === 'welcome' || p.active === 'finished') return false;
   currentRound = Math.max(1, p.currentRound|0);
   lastRandom = p.lastRandom || null;
+  warmupRotation = !!p.warmupRotation && p.active === 'rotation';
   const scr = p.active === 'helpFull' ? (p.helpFullPrev || 'between') : p.active;
 
   if(scr === 'timer'){
@@ -4596,7 +4668,26 @@ setMasterVolume(cfg.volume);
 applyEventInfo();
 applyFeedback();
 setTimerReady();
-if(!restoreProgress()) show('welcome');
+if(!restoreProgress()){
+  show('welcome');
+  if(eventInfoMissing()) setTimeout(openSettings, 400);
+}
+
+// Settings saved in another window of this show (or from the phone remote in
+// another tab) show up here straight away.
+window.addEventListener('storage', e => {
+  if(e.key !== 'esn_sf_cfg_v8') return;
+  const keepHud = cfg.hudMode;
+  cfg = loadConfig();
+  cfg.hudMode = keepHud;
+  applyEventInfo(); applyFeedback(); setMasterVolume(cfg.volume);
+  updateRoundBadge(); updateProgress(); updateHud();
+  if(active === 'timer' && document.getElementById('status').textContent === 'READY'){
+    timeLeft = cfg.talkMin*60;
+    document.getElementById('mainTime').textContent = formatTime(timeLeft);
+  }
+  if(modal.classList.contains('open')) openSettings();
+});
 if(cfg.hudMode === 'window') setTimeout(()=> showToast('Press O to open the operator window', 4000), 600);
 bgOn();
 updateProgress();

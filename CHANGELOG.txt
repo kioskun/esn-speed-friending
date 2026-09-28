@@ -39,3 +39,13 @@ Versions (all 28/09/2026)
       phone-remote\start-phone-remote.bat, open the show from the Connect page,
       scan the QR. Big buttons, live timer, Welcome, Lock, Settings from the phone.
       Firewall helper. First downloadable release (zip with HOW TO USE.txt).
+  v8.2 No built-in event details: a fresh download opens Settings and asks for
+      city, venue, date, time and tables (phone reminds too). Settings changes show
+      straight away in every open window of the show. Phone remote security: 6-
+      character random code, new every start, only in a QR that is hidden until
+      clicked (60 s), kept out of the phone's address bar, 20 wrong codes = shut
+      out, show served to the laptop only.
+      New intro (people are seated with badges already): Welcome, How it works
+      (with the real minutes and rounds), Your badge (+ VOLUNTEER badge line),
+      Conversation starters, Let's mix it up (Space = warm-up move, then round 1),
+      Get ready. "Take a seat" and "We're here to help" screens removed.

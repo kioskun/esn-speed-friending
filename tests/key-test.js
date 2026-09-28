@@ -19,32 +19,36 @@ const EVENT = { city:'Thessaloniki', venue:'Test venue', date:'29/09/2026', time
 
 // Intro: Welcome, How it works, Your badge, Conversation starters, Warm-up.
 // Space on Warm-up starts the warm-up rotation; Space again skips it to round 1.
-const INTRO = ['welcome','tutorial','badges','helpIntro','warmup'];
+const INTRO = ['welcome','tutorial','badges','volunteers','helpIntro','warmup'];
 const SP = { key:' ' };
+const B = [SP,SP,SP,SP,SP,SP,SP];      // Welcome ... Warm-up, warm-up move, skip -> Get ready (round 1)
 // How to reach each state from a fresh start (Welcome screen)
 const STATES = {
   welcome:        { keys:[] },
   tutorial:       { keys:[SP] },
   badges:         { keys:[SP,SP] },
-  helpIntro:      { keys:[SP,SP,SP] },
-  warmup:         { keys:[SP,SP,SP,SP] },
-  warmupMove:     { keys:[SP,SP,SP,SP,SP] },
-  between:        { keys:[SP,SP,SP,SP,SP,SP] },
-  betweenRound3:  { keys:[SP,SP,SP,SP,SP,SP, SP,{run:11e3},{run:61e3},SP, SP,{run:11e3},{run:61e3},SP] },
-  startCountdown: { keys:[SP,SP,SP,SP,SP,SP,SP] },
-  timerRunning:   { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3}] },
-  timerPaused:    { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},SP] },
-  timerHelp:      { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{key:'h'}] },
-  timerReady:     { cfg:{ autoNext:false }, keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3}] },
-  timerLast10s:   { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:52e3}] },
-  rotation:       { keys:[SP,SP,SP,SP,SP,SP,{key:'r'}] },
-  rotationAuto:   { keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
+  volunteers:     { keys:[SP,SP,SP] },
+  helpIntro:      { keys:[SP,SP,SP,SP] },
+  warmup:         { keys:[SP,SP,SP,SP,SP] },
+  warmupMove:     { keys:[SP,SP,SP,SP,SP,SP] },
+  between:        { keys:B },
+  betweenRound3:  { keys:[...B, SP,{run:11e3},{run:61e3},SP, SP,{run:11e3},{run:61e3},SP] },
+  startCountdown: { keys:[...B,SP] },
+  timerRunning:   { keys:[...B,SP,{run:11e3}] },
+  timerPaused:    { keys:[...B,SP,{run:11e3},SP] },
+  timerHelp:      { keys:[...B,SP,{run:11e3},{key:'h'}] },
+  timerReady:     { cfg:{ autoNext:false }, keys:[...B,SP,{run:11e3}] },
+  timerLast10s:   { keys:[...B,SP,{run:11e3},{run:52e3}] },
+  timerLofi:      { cfg:{ roundMusic:'lofi' }, keys:[...B,SP,{run:11e3}] },
+  timerNoMusic:   { cfg:{ roundMusic:'off' }, keys:[...B,SP,{run:11e3}] },
+  rotation:       { keys:[...B,{key:'r'}] },
+  rotationAuto:   { keys:[...B,SP,{run:11e3},{run:61e3}] },
   manualWarmup:   { keys:[SP,SP,{key:'r'}] },   // the old way: R on an intro screen, then 0 0
-  break:          { keys:[SP,SP,SP,SP,SP,SP,{key:'b'}] },
-  helpFull:       { keys:[SP,SP,SP,SP,SP,SP,{key:'h'}] },
-  finished:       { cfg:{ totalRounds:1 }, keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
-  finishedQr:     { cfg:{ totalRounds:1, feedbackUrl:'https://forms.gle/example123' }, keys:[SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}] },
-  settingsOpen:   { keys:[SP,SP,SP,SP,SP,SP,{key:'g'}] },
+  break:          { keys:[...B,{key:'b'}] },
+  helpFull:       { keys:[...B,{key:'h'}] },
+  finished:       { cfg:{ totalRounds:1 }, keys:[...B,SP,{run:11e3},{run:61e3}] },
+  finishedQr:     { cfg:{ totalRounds:1, feedbackUrl:'https://forms.gle/example123' }, keys:[...B,SP,{run:11e3},{run:61e3}] },
+  settingsOpen:   { keys:[...B,{key:'g'}] },
   setupPrompt:    { cfg:{ city:'', venue:'', date:'', time:'', tables:0 }, keys:[{run:1000}] },
 };
 const KEYS = [
@@ -54,8 +58,9 @@ const KEYS = [
   { name:'L', seq:['l'] }, { name:'M', seq:['m'] }, { name:'W', seq:['w'] }, { name:'W W', seq:['w','w'] },
   { name:'0', seq:['0'] }, { name:'0 0', seq:['0','0'] }, { name:']', seq:[']'] }, { name:'[', seq:['['] },
   { name:'+', seq:['+'] }, { name:'=', seq:['='] }, { name:'-', seq:['-'] }, { name:'X', seq:['x'] },
+  { name:'Up', seq:['ArrowUp'] }, { name:'Down', seq:['ArrowDown'] },
 ];
-const LOCK_ALLOWED = ['L','M','O','G','Esc'];
+const LOCK_ALLOWED = ['L','M','O','G','Esc','Up','Down'];
 
 function snapshotJs(){
   return `({
@@ -71,6 +76,7 @@ function snapshotJs(){
     seatInfo: modal.querySelector('#seatInfo').textContent,
     settingsInOpWin: modal.ownerDocument !== document,
     warm: warmupRotation,
+    vol: cfg.volume, music: cfg.roundMusic, talkOn: !!talk, unlocked: audioUnlocked,
     setupNote: modal.querySelector('#setupNote').style.display !== 'none',
     evInfo: document.getElementById('evInfo').textContent,
     helpPrev: helpFullPrev
@@ -90,6 +96,8 @@ function invariants(s, where){
   if(s.active === 'rotation' && !s.rot) errs.push('rotation screen without its timer');
   if(s.active === 'break' && !s.cd) errs.push('break screen without its timer');
   if(s.active === 'startCountdown' && !s.cd) errs.push('countdown screen without its timer');
+  const talkWanted = s.active === 'timer' && !s.isPaused && s.unlocked && ['pulse','pad','deep'].includes(s.music);
+  if(s.talkOn !== talkWanted) errs.push(`round music ${s.talkOn ? 'playing' : 'silent'} on ${s.active}${s.isPaused ? ' (paused)' : ''} with music=${s.music}`);
   return errs.map(e => `${where}: ${e}`);
 }
 
@@ -141,6 +149,12 @@ function expected(stateName, key, b, a){
       if(a.settings && !a.seatInfo) errs.push('Settings opened without the seating info line');
       break;
     case 'L': if(!a.lockMode) errs.push('L did not lock'); break;
+    case 'Up': case 'Down': {
+      same();
+      const want = Math.max(0, Math.min(100, b.vol + (key === 'Up' ? 10 : -10)));
+      if(a.vol !== want) errs.push(`volume ${b.vol} -> ${a.vol}, expected ${want}`);
+      break;
+    }
     case 'M': if(a.muted === b.muted) errs.push('M did not toggle mute'); break;
     case 'W W': is('welcome'); if(a.hist !== b.hist) errs.push('W W changed seating history'); break;
     case '0 0':
@@ -239,7 +253,7 @@ async function fullNight(browser, tables){
     [CFG_KEY, { ...EVENT, tables, totalRounds:6, talkMin:1, rotateMin:1 }]);
   await page.goto(APP);
   const kb = page.keyboard;
-  for(let i = 0; i < 4; i++) await kb.press(' ');           // Welcome -> Warm-up screen
+  for(let i = 0; i < 5; i++) await kb.press(' ');           // Welcome -> Warm-up screen
   await kb.press(' '); await ctx.clock.runFor(1000);         // Space: warm-up move
   let s = await page.evaluate(snapshotJs());
   if(s.active !== 'rotation' || !s.warm) failures.push('night: Space on Warm-up did not start the warm-up move');
@@ -290,8 +304,9 @@ async function eventSetup(browser){
   if(!(await a.evaluate(snapshotJs())).settings) f.push('event setup: Settings did not open for a fresh download');
   const info0 = await b.evaluate(() => document.getElementById('evInfo').textContent + '|' + document.getElementById('evCity').textContent);
   if(info0 !== '|') f.push('event setup: fresh download still shows built-in event details: ' + info0);
-  await a.fill('#setCity', 'Thessaloniki'); await a.fill('#setVenue', 'Somewhere'); await a.fill('#setDate', '29/09/2026');
+  await a.fill('#setCity', 'Thessaloniki'); await a.fill('#setVenue', 'Somewhere'); await a.fill('#setDate', '2026-09-29');
   await a.fill('#setTime', '19:00'); await a.fill('#setTables', '50'); await a.fill('#setTalkMin', '12');
+  await a.selectOption('#setRoundMusic', 'pad');
   await a.click('#btnSave'); await a.waitForTimeout(500);
   const sa = await a.evaluate(snapshotJs());
   if(sa.settings) f.push('event setup: Settings did not close after Save');

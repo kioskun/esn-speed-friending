@@ -17,6 +17,7 @@ THE SHOW
         ] [ = +1 / -1 min               + - = +30 / -30 s
         W W = Welcome screen            0 0 = back to round 1
         Esc = Settings                  O = operator view
+        Up / Down arrow = volume (live)
 
 SEATING
   - Up to 4 people per table, anywhere. A volunteer hands out badges A, B, C, D
@@ -36,8 +37,8 @@ PHONE REMOTE (optional)
   3. Double-click phone-remote\start-phone-remote.bat. Keep the black window open.
   4. On the "Connect your phone" page: click OPEN THE SHOW (don't open the HTML
      file yourself). The page then says "Show connected".
-  5. Click SHOW QR and scan it with the phone. Do this before guests arrive:
-     the QR holds the remote's code (new every start, hides after 60 s).
+  5. Scan the QR with the phone before guests arrive (it holds the remote's
+     code, new every start). The phone shows a quick start guide the first time.
   Settings are saved separately for the phone-remote show, so set them there
   (Esc on the laptop, or Settings on the phone).
 

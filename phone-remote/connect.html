@@ -23,9 +23,8 @@
   <h1>Connect your phone</h1>
   <p>1. Put the phone and this laptop on the <b>same phone hotspot</b>.<br>
      2. Click <b>Open the show</b>, move it to the projector and press F11. Click once on the show so sound can play.<br>
-     3. Click <b>Show QR</b> and scan it with the phone camera. Do this before guests arrive or while the projector shows something else: the QR holds the remote's code, which is new every time the launcher starts. It hides itself after 60 seconds.</p>
+     3. Scan the QR below with the phone camera. The code in it is new every time the launcher starts, so after a restart scan again.</p>
   <p><a class="btn" href="/" target="_blank">Open the show</a> &nbsp; <span id="showStatus">Checking the show…</span></p>
-  <p><button class="btn qrbtn" id="qrBtn">Show QR for the phone</button> <span id="qrTimer"></span></p>
   <div class="cards" id="cards"></div>
   <p id="note"></p>
   <p style="font-size:14px;color:rgba(255,255,255,.65)">Phone can't open it? Use a phone hotspot (venue Wi-Fi often blocks this), and run <i>phone-remote\allow-phone-in-firewall.bat</i> once on this laptop.
@@ -43,15 +42,6 @@
   }
   checkShow(); setInterval(checkShow, 1500);
 
-  // The QR carries the secret key: shown only on request, for 60 seconds
-  let hideTimer = null, countdown = null;
-  function hideQr(){
-    document.getElementById('cards').innerHTML = '';
-    document.getElementById('note').textContent = '';
-    document.getElementById('qrTimer').textContent = '';
-    document.getElementById('qrBtn').textContent = 'Show QR for the phone';
-    clearTimeout(hideTimer); clearInterval(countdown); hideTimer = null;
-  }
   async function showQr(){
     const info = await (await fetch('/api/info', { cache:'no-store' })).json();
     const cards = document.getElementById('cards');
@@ -67,13 +57,8 @@
       cards.appendChild(d);
     });
     if(info.urls.length > 1) document.getElementById('note').textContent = 'The laptop is on more than one network. Use the QR for the network your phone is on (the hotspot).';
-    document.getElementById('qrBtn').textContent = 'Hide QR';
-    let left = 60;
-    document.getElementById('qrTimer').textContent = 'Hides in ' + left + ' s';
-    countdown = setInterval(() => { left--; document.getElementById('qrTimer').textContent = 'Hides in ' + left + ' s'; }, 1000);
-    hideTimer = setTimeout(hideQr, 60000);
   }
-  document.getElementById('qrBtn').addEventListener('click', () => { if(hideTimer) hideQr(); else showQr(); });
+  showQr();
 </script>
 </body>
 </html>

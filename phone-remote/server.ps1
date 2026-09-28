@@ -43,7 +43,7 @@ $Boot = [string](Get-Random -Maximum 1000000000)
 # Keys the phone may send (the same keys the laptop keyboard uses)
 $AllowedKeys = @(' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft', 'l',
   # actions: Welcome (W W), reset to round 1 (0 0), clear seating history, save Settings (JSON body)
-  'welcome', 'reset', 'clearseating', 'settings')
+  'welcome', 'reset', 'clearseating', 'settings', 'volume')
 
 $Mime = @{
   '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'
@@ -218,6 +218,10 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
       if($k -eq 'settings'){
         if($body.Length -lt 2 -or $body.Length -gt 4096){ SendText $client 400 'application/json' '{"error":"settings"}'; return }
         $payload = [Text.Encoding]::UTF8.GetString($body)
+      }
+      if($k -eq 'volume'){
+        $payload = [Text.Encoding]::UTF8.GetString($body)
+        if($payload -notmatch '^\d{1,3}$'){ SendText $client 400 'application/json' '{"error":"volume"}'; return }
       }
       $script:seq++
       [void]$script:cmds.Add([pscustomobject]@{ id = $script:seq; key = $k; payload = $payload; at = [DateTime]::UtcNow })

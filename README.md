@@ -27,8 +27,9 @@ It is one HTML file. There is nothing to install and no internet is needed on th
 | + / − | +30 / −30 seconds |
 | W W | Back to the Welcome screen |
 | 0 0 | Reset to round 1 (Get Seated) |
-| L | Lock the keyboard (only L, M, O, Esc/G still work) |
+| L | Lock the keyboard (only L, M, ↑ ↓, O, Esc/G still work) |
 | M | Mute / unmute |
+| ↑ / ↓ | Volume up / down (live, saved) |
 | O | Operator view (a large panel, or a separate window for a second screen, chosen in Settings) |
 
 ### Phone remote (optional)
@@ -43,12 +44,12 @@ Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 
 5. Scan the QR on the *Connect your phone* page with the phone camera. The remote opens in the phone's browser and shows **Connected**. If there are several QRs, use the one marked "Try this one first", or whichever matches the hotspot.
 6. Move the show tab to the projector, press F11, and click once on it so sound can play.
 
-**Scan the QR before guests arrive, or while the projector shows something else.** The QR holds the remote's access code, so it stays hidden until you click **Show QR**, and hides itself after 60 seconds. Keep the laptop on your hotspot only, not the venue Wi-Fi.
+**Scan the QR before guests arrive, or while the projector shows something else**, since it holds the remote's access code. Best network: a travel router set to use the venue Wi-Fi for internet (repeater/WISP mode), with the laptop and the phone both on the router, or a phone hotspot.
 
 Good to know:
 - Phone buttons: the big button (it says what it will do: Next screen, Start round, Pause, Resume, Skip rotation…), **Rotate now**, **Break**, −1 min, −30 s, +30 s, +1 min, ◀ Back / Next ▶ (intro screens), Help QR, Mute, **Welcome screen**, **Lock keys**, and **⚙ Settings**.
-- **Rotate now**, **Break** and **Welcome screen** need two taps, so a pocket tap can't move the room.
-- **⚙ Settings** on the phone has the same settings as Esc on the laptop (times, rounds, volume, auto start, tables, feedback link, city, venue, date, time), with the same limits. Like on the laptop, pause the round before saving. It also has **Reset to round 1** (like 0 0, keeps the warm-up history) and **Clear seating history** (only before a new event), both with two taps. The operator-view mode stays on the laptop.
+- **Rotate now**, **Break**, **Welcome screen** and **Reset to round 1** need two taps, so a pocket tap can't move the room. The **volume slider** works live. **? Quick start guide** explains the phone (it also opens by itself the first time).
+- **⚙ Settings** on the phone has the same settings as Esc on the laptop (times, rounds, auto start, music during rounds, tables, feedback link, city, venue, date and time with pickers), with the same limits. Like on the laptop, pause the round before saving. It also has **Clear seating history** (only before a new event, two taps). The operator-view mode stays on the laptop.
 - **Lock keys** locks the laptop keyboard and the phone together. Only Mute, Lock keys and Settings still work until you tap Unlock keys (or press L on the laptop).
 - Security: the access code is 6 random letters and numbers, made new every time the launcher starts, and never saved to disk. The phone keeps it out of its address bar. A device that tries 20 wrong keys is shut out until the next start, and the show itself only opens on the laptop. After restarting the launcher, scan the QR again.
 - **Settings and seating history are stored separately** for the launcher (`http://localhost`) and for the file opened by double-click. Pick one way for the whole night, and set Settings (Esc) in that one.
@@ -58,7 +59,7 @@ Good to know:
 ### Seating and rotation
 
 - People sit anywhere, up to 4 per table, and a volunteer hands out badges A, B, C and D so each table has different letters. Tables of 3 are fine; never seat 5.
-- **Intro (people are already seated with their badges):** Welcome → How it works → Your badge (A–D, plus the VOLUNTEER badge) → Conversation starters → **Let's mix it up!** → Get ready: round 1.
+- **Intro (people are already seated with their badges):** Welcome → How it works → Your badge (A–D) → Volunteers → Conversation starters → **Let's mix it up!** → Get ready: round 1.
 - **Warm-up to split friends:** Space on *Let's mix it up!* runs one warm-up move; when it ends (or Space to skip) the event goes to round 1 with everyone at a new table. The old way (R, then 0 0) still works.
 - Each rotation shows how many tables each letter moves (stay, 1, 2 or 3), and **nobody ever meets the same person twice**, the warm-up included. The moves are picked at random on the first rotation of the night and then stay the same each round: a full search showed that for 5 or more rotations this is the only repeat-free way. The app remembers every move in the browser, also after a refresh or a reset.
 - **Set the number of tables in Settings.** The rule depends on it, and Settings shows how many rotations your table count allows with all-new faces. Table counts divisible by 3 allow fewer (45 tables: 14 rotations); around 50 tables allows far more than a normal night needs. If the night runs past that limit, the app picks the move with the fewest repeats and shows a warning.

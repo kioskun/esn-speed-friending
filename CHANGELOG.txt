@@ -49,3 +49,10 @@ Versions (all 28/09/2026)
       (with the real minutes and rounds), Your badge (+ VOLUNTEER badge line),
       Conversation starters, Let's mix it up (Space = warm-up move, then round 1),
       Get ready. "Take a seat" and "We're here to help" screens removed.
+  v8.3 Volunteers slide back (after Your badge). Music on Get ready. Round music:
+      calm music made live in the app (Cafe pulse / Warm chords / Deep ambient,
+      or the lofi mix, or none: Settings > Music during rounds). Volume is live
+      (up/down arrows, operator window, phone slider) instead of in Settings.
+      Date and time pickers and a Back button in Settings. Phone: Reset to
+      round 1 on the main controls, quick start guide. QR shown straight away.
+      Phone and show sync about twice as fast.

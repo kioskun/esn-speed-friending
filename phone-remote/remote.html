@@ -33,6 +33,12 @@
   .toast.show{ opacity:1 }
   body.down .status, body.down button{ opacity:.4 }
   body.down #sheet button{ opacity:1 }
+  .vol{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:10px 14px }
+  .vol input{ flex:1; height:32px; accent-color:var(--cyan) }
+  .vol b{ min-width:48px; text-align:right }
+  #guide{ position:fixed; inset:0; background:var(--bg); overflow-y:auto; padding:18px 16px calc(20px + env(safe-area-inset-bottom)); display:none; z-index:6; line-height:1.45 }
+  #guide.open{ display:block }
+  #guide ol{ padding-left:22px } #guide li{ margin-bottom:10px }
   #sheet{ position:fixed; inset:0; background:var(--bg); overflow-y:auto; padding:16px 14px calc(20px + env(safe-area-inset-bottom)); display:none; z-index:5 }
   #sheet.open{ display:block }
   #sheet h2{ margin:4px 0 12px; font-size:22px }
@@ -41,6 +47,8 @@
   .f label{ display:flex; flex-direction:column; gap:5px; font-size:13px; color:rgba(255,255,255,.75) }
   .f label.wide{ grid-column:1 / -1 }
   .f input{ font:inherit; font-size:17px; color:#fff; background:#15151f; border:1px solid var(--line); border-radius:12px; padding:11px 12px; width:100% }
+  .f select{ font:inherit; font-size:17px; color:#fff; background:#15151f; border:1px solid var(--line); border-radius:12px; padding:11px 12px; width:100% }
+  .f input[type=date], .f input[type=time]{ color-scheme:dark; min-height:48px }
   .f input[type=checkbox]{ width:24px; height:24px }
   .f .chk{ flex-direction:row; align-items:center; gap:10px; font-size:15px; color:#fff }
   .hintx{ font-size:13px; color:rgba(255,255,255,.6); margin-top:8px }
@@ -80,11 +88,28 @@
     <button class="small" id="bMute" data-k="m">Mute</button>
     <button class="small" data-k="welcome" data-confirm="Tap again: Welcome">Welcome screen</button>
     <button class="small" id="bLock" data-k="l">Lock keys</button>
+    <button class="small danger" data-k="reset" data-confirm="Tap again: reset">Reset to round 1</button>
+    <button class="small" id="bSettings">⚙ Settings</button>
   </div>
-  <button class="small" id="bSettings">⚙ Settings</button>
+  <div class="vol"><span>🔈</span><input id="volSlider" type="range" min="0" max="100" step="5"><b id="volVal">–</b></div>
+  <button class="small" id="bGuide">? Quick start guide</button>
+
+  <div id="guide">
+    <h2>Quick start</h2>
+    <ol>
+      <li><b>On the laptop</b>: open the show with <b>Open the show</b> on the Connect page (not the HTML file), move it to the projector, press F11, and click it once so sound can play.</li>
+      <li><b>⚙ Settings</b> here: city, venue, date, time and the <b>number of tables</b>. The Welcome screen updates straight away.</li>
+      <li>Hand out the badges, then use the <b>big button</b>. It always says what it will do next (Next screen, Start round, Pause…).</li>
+      <li>On <b>Let's mix it up!</b> the big button does the warm-up move, then round 1 starts.</li>
+      <li><b>Rotate now</b>, <b>Break</b>, <b>Welcome</b> and <b>Reset</b> need two taps. <b>Lock keys</b> stops accidental key presses on the laptop.</li>
+      <li>The slider sets the volume live. <b>Mute</b> silences everything.</li>
+    </ol>
+    <p class="hintx">The keyboard and TeamViewer keep working at the same time. If this page says "Old code", scan the QR on the laptop again (it changes every time the launcher starts).</p>
+    <button class="save" id="bGuideClose" style="width:100%;margin-top:12px">Got it</button>
+  </div>
 
   <div id="sheet">
-    <h2>Settings</h2>
+    <div style="display:flex;align-items:center;gap:12px"><button class="small" id="bBack" style="min-height:44px;padding:0 14px">← Back</button><h2 style="margin:0">Settings</h2></div>
     <div class="hintx" id="setNote"></div>
     <h3>Timing</h3>
     <div class="f">
@@ -93,8 +118,8 @@
       <label>Break (min)<input id="breakMin" type="number" inputmode="numeric" min="0" max="60"></label>
       <label>Countdown (s)<input id="startSec" type="number" inputmode="numeric" min="0" max="60"></label>
       <label>Total rounds (0 = unlimited)<input id="totalRounds" type="number" inputmode="numeric" min="0" max="50"></label>
-      <label>Volume (%)<input id="volume" type="number" inputmode="numeric" min="0" max="100"></label>
       <label class="wide chk"><input id="autoNext" type="checkbox"> Start rounds automatically after the countdown</label>
+      <label class="wide">Music during rounds<select id="roundMusic"><option value="pulse">Café pulse (calm, light beat)</option><option value="pad">Warm chords</option><option value="deep">Deep ambient (quietest)</option><option value="lofi">Lofi mix (same as the intro)</option><option value="off">No music</option></select></label>
     </div>
     <h3>Rotation</h3>
     <div class="f">
@@ -107,8 +132,8 @@
     <div class="f">
       <label>City<input id="city" maxlength="40"></label>
       <label>Venue<input id="venue" maxlength="60"></label>
-      <label>Date<input id="date" maxlength="30"></label>
-      <label>Time<input id="time2" maxlength="20"></label>
+      <label>Date<input id="date" type="date"></label>
+      <label>Time<input id="time2" type="time"></label>
     </div>
     <div class="grid" style="margin-top:16px">
       <button id="bCancel">Cancel</button>
@@ -116,10 +141,9 @@
     </div>
     <h3>Event</h3>
     <div class="grid">
-      <button class="small danger" data-k="reset" data-confirm="Tap again: reset">Reset to round 1</button>
       <button class="small danger" data-k="clearseating" data-confirm="Tap again: clear">Clear seating history</button>
     </div>
-    <div class="hintx">Reset (like 0 0) goes back to round 1 and keeps the seating history, as after the warm-up. Clear seating history only before a new event.</div>
+    <div class="hintx">Only before a new event: the app then forgets who has already met. (Reset to round 1 is on the main screen.)</div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -150,12 +174,12 @@
   }
 
   let sending = false;
-  async function send(k, body){
-    if(sending){ toast('Wait, still sending the last tap…'); return false; }
-    const always = ['m', 'l', 'settings', 'clearseating'];
+  async function send(k, body, quiet){
+    if(sending){ if(!quiet) toast('Wait, still sending the last tap…'); return false; }
+    const always = ['m', 'l', 'settings', 'clearseating', 'volume'];
     if(last && last.locked && !always.includes(k)) toast('Keys are locked: tap Lock keys to unlock');
     else if(last && last.settings && !always.includes(k)) toast('Settings are open on the laptop');
-    if(navigator.vibrate) navigator.vibrate(25);
+    if(navigator.vibrate && !quiet) navigator.vibrate(25);
     sending = true;
     try{
       const r = await timedFetch('/api/cmd?k=' + encodeURIComponent(k), { method:'POST', headers: H(), body: body || undefined }, 2500);
@@ -163,27 +187,49 @@
       sending = false;
       if(!r.ok){ toast(j.error === 'code' || j.error === 'blocked' ? 'Old key: scan the QR on the laptop again' : 'Not sent'); return false; }
       if(!j.showConnected){ toast('Show not connected: open it with "Open the show" on the laptop'); return false; }
-      setTimeout(poll, 350);
+      setTimeout(poll, 200);
       return true;
     } catch(e){ sending = false; toast('Not sent: laptop not reachable'); return false; }
   }
 
   // Settings panel: filled from the show's current Settings
-  const FIELDS = ['talkMin','rotateMin','breakMin','startSec','totalRounds','volume','tables','feedbackUrl','city','venue','date'];
+  const FIELDS = ['talkMin','rotateMin','breakMin','startSec','totalRounds','tables','feedbackUrl','city','venue'];
+  // date picker <-> dd/mm/yyyy used by the show
+  const toPicker = d => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(d || ''); return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : ''; };
+  const fromPicker = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
   $('bSettings').addEventListener('click', () => {
     if(!last || !last.cfg){ toast('Show not connected'); return; }
     FIELDS.forEach(f => { $(f).value = last.cfg[f] == null ? '' : last.cfg[f]; });
-    $('time2').value = last.cfg.time || '';
+    $('time2').value = /^\d{1,2}:\d{2}$/.test(last.cfg.time || '') ? last.cfg.time.padStart(5, '0') : '';
+    $('date').value = toPicker(last.cfg.date);
+    $('roundMusic').value = last.cfg.roundMusic || 'pulse';
     $('autoNext').checked = !!last.cfg.autoNext;
     $('setNote').textContent = last.settingsLocked ? 'The round is running: pause it (big button) before saving.' : '';
     $('sheet').classList.add('open'); window.scrollTo(0, 0);
   });
   $('bCancel').addEventListener('click', () => $('sheet').classList.remove('open'));
+  $('bBack').addEventListener('click', () => $('sheet').classList.remove('open'));
+
+  // Quick start guide: shown the first time this phone opens the remote
+  const openGuide = () => { $('guide').classList.add('open'); window.scrollTo(0, 0); };
+  $('bGuide').addEventListener('click', openGuide);
+  $('bGuideClose').addEventListener('click', () => { $('guide').classList.remove('open'); try{ localStorage.setItem('esnGuideSeen', '1'); } catch(e){} });
+  try{ if(!localStorage.getItem('esnGuideSeen')) openGuide(); } catch(e){}
+
+  // Live volume: sent when you let go of the slider (and while dragging, at most every 300 ms)
+  let volDragging = false, volSentAt = 0;
+  const volNow = () => { $('volVal').textContent = $('volSlider').value + '%'; };
+  $('volSlider').addEventListener('input', () => {
+    volDragging = true; volNow();
+    if(Date.now() - volSentAt > 300){ volSentAt = Date.now(); send('volume', $('volSlider').value, true); }
+  });
+  $('volSlider').addEventListener('change', () => { volNow(); send('volume', $('volSlider').value, true); setTimeout(() => { volDragging = false; }, 1500); });
   $('bSave').addEventListener('click', async () => {
     if(last && last.settingsLocked){ toast('Pause the round first'); return; }
     const p = {};
     FIELDS.forEach(f => { p[f] = $(f).value; });
-    p.time = $('time2').value; p.autoNext = $('autoNext').checked;
+    p.time = $('time2').value; p.date = fromPicker($('date').value); p.autoNext = $('autoNext').checked;
+    p.roundMusic = $('roundMusic').value;
     if(await send('settings', JSON.stringify(p))){ toast('Saved'); $('sheet').classList.remove('open'); }
   });
 
@@ -227,6 +273,7 @@
     $('bSpace').disabled = !s.next || s.next === '—';
     $('bMute').textContent = s.muted ? 'Unmute' : 'Mute';
     $('bLock').textContent = s.locked ? 'Unlock keys' : 'Lock keys';
+    if(!volDragging && s.cfg){ $('volSlider').value = s.cfg.volume; volNow(); }
     $('seatNote').textContent = s.rotations + ' rotation(s) remembered' + (s.maxRotations != null ? '; these tables allow ' + (s.maxRotations >= 19 ? '19+' : s.maxRotations) + ' with all-new faces' : '');
     last = s;
   }
@@ -242,7 +289,7 @@
     } catch(e){ render(null); }
     polling = false;
   }
-  poll(); setInterval(poll, 700);
+  poll(); setInterval(poll, 400);
 </script>
 </body>
 </html>

@@ -52,11 +52,14 @@ async function seededContext(browser, cfg, withClock){
 }
 
 const SP = ' ';
+// Intro: Welcome, How it works, Your badge, Volunteers, Conversation starters,
+// Warm-up; Space there = warm-up move, Space again = round 1 (Get ready)
+const BETWEEN = [SP,SP,SP,SP,SP,SP,SP];
 const STATES = {
-  welcome: [], tutorial: [SP], helpIntro: [SP,SP,SP], warmup: [SP,SP,SP,SP], between: [SP,SP,SP,SP,SP,SP],
-  timerRunning: [SP,SP,SP,SP,SP,SP,SP,{run:11e3}], timerPaused: [SP,SP,SP,SP,SP,SP,SP,{run:11e3},SP],
-  rotation: [SP,SP,SP,SP,SP,SP,'r'], break: [SP,SP,SP,SP,SP,SP,'b'], helpFull: [SP,SP,SP,SP,SP,SP,'h'],
-  finished: [SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}],
+  welcome: [], tutorial: [SP], volunteers: [SP,SP,SP], helpIntro: [SP,SP,SP,SP], warmup: [SP,SP,SP,SP,SP], between: BETWEEN,
+  timerRunning: [...BETWEEN,SP,{run:11e3}], timerPaused: [...BETWEEN,SP,{run:11e3},SP],
+  rotation: [...BETWEEN,'r'], break: [...BETWEEN,'b'], helpFull: [...BETWEEN,'h'],
+  finished: [...BETWEEN,SP,{run:11e3},{run:61e3}],
 };
 // phone command -> the keys pressed on the laptop keyboard for the same thing
 const REMOTE_KEYS = [' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft', 'l', 'welcome', 'reset'];
@@ -130,6 +133,11 @@ async function phoneRun(browser, token){
   await pp.goto(`${BASE}/remote?t=${token}`);
   await sleep(300);
   if(pp.url().includes(token)) fail('the key stays in the phone address bar');
+  // Quick start guide on the first visit
+  if(!(await pp.isVisible('#guide'))) fail('quick start guide not shown the first time');
+  await pp.click('#bGuideClose');
+  await pp.reload(); await sleep(500);
+  if(await pp.isVisible('#guide')) fail('quick start guide shown again after Got it');
   const S = () => sp.evaluate(snapJs());
   const until = async (label, fn, ms = 5000) => {
     const t0 = Date.now();
@@ -145,8 +153,8 @@ async function phoneRun(browser, token){
 
   await tap('button[data-k="ArrowRight"]'); await until('Next ▶ goes to How it works', s => s.active === 'tutorial');
   await tap('button[data-k="ArrowLeft"]'); await until('◀ Back returns to Welcome', s => s.active === 'welcome');
-  for(let i = 0; i < 6; i++){ const a = (await S()).active; await tap('#bSpace'); await until('big button steps the intro', s => s.active !== a); }
-  await until('reach Get Seated', s => s.active === 'between');
+  for(let i = 0; i < 7; i++){ const a = (await S()).active; await tap('#bSpace'); await until('big button steps the intro', s => s.active !== a); }
+  await until('reach Get ready (round 1 after the warm-up move)', s => s.active === 'between' && s.currentRound === 1 && s.hist === 2);
 
   // Rotate needs two taps
   const h0 = (await S()).hist;
@@ -203,19 +211,27 @@ async function phoneRun(browser, token){
   // Settings from the phone: filled with the show's values, saved through the laptop's Save (same limits)
   await tap('#bSettings');
   if((await pp.inputValue('#talkMin')) !== '1' || (await pp.inputValue('#tables')) !== '50') fail('phone Settings not filled with the current values');
-  await pp.fill('#talkMin', '20'); await pp.fill('#tables', '47'); await pp.fill('#volume', '250');
+  await pp.fill('#talkMin', '20'); await pp.fill('#tables', '47'); await pp.fill('#date', '2026-09-29'); await pp.fill('#time2', '19:30');
+  await pp.selectOption('#roundMusic', 'deep');
   await pp.fill('#feedbackUrl', 'https://forms.gle/phoneTest1'); await pp.fill('#venue', 'Phone Venue');
   await pp.uncheck('#autoNext');
   await tap('#bSave');
   await sp.waitForFunction(() => cfg.talkMin === 20 && cfg.tables === 47, null, { timeout: 5000 }).catch(() => fail('phone Settings were not applied'));
   const c = await sp.evaluate(() => ({ cfg, saved: JSON.parse(localStorage.getItem('esn_sf_cfg_v8')), info: document.getElementById('evInfo').textContent,
     qr: !!document.querySelector('#feedbackQr svg') }));
-  if(c.cfg.volume !== 100) fail(`volume 250 from the phone should be limited to 100 like on the laptop, got ${c.cfg.volume}`);
+  if(c.cfg.date !== '29/09/2026' || c.cfg.time !== '19:30' || c.cfg.roundMusic !== 'deep') fail('phone date/time/music not saved: ' + JSON.stringify([c.cfg.date, c.cfg.time, c.cfg.roundMusic]));
+  if(!c.info.includes('29/09/2026 | 19:30')) fail('date/time from the phone not shown on Welcome: ' + c.info);
   if(c.cfg.autoNext !== false || c.cfg.feedbackUrl !== 'https://forms.gle/phoneTest1' || c.cfg.startSec !== 2 || c.cfg.hudMode !== 'projector') fail('phone Settings: wrong values ' + JSON.stringify(c.cfg));
   if(!c.saved || c.saved.talkMin !== 20) fail('phone Settings were not saved (lost on refresh)');
   if(!c.info.includes('Phone Venue')) fail('venue from the phone not shown on the Welcome screen');
   if(!c.qr) fail('feedback QR not made from the phone link');
   if(await pp.isVisible('#sheet')) fail('Settings panel did not close after Save');
+
+  // Live volume slider (no Settings needed)
+  await pp.evaluate(() => { const v = document.getElementById('volSlider'); v.value = 35; v.dispatchEvent(new Event('change')); });
+  await sp.waitForFunction(() => cfg.volume === 35, null, { timeout: 4000 }).catch(() => fail('phone volume slider did not change the volume'));
+  if((await sp.evaluate(() => JSON.parse(localStorage.getItem('esn_sf_cfg_v8')).volume)) !== 35) fail('volume from the phone not saved');
+  if(!(await pp.isVisible('#volSlider'))) fail('volume slider not on the main controls');
 
   // Clear seating history needs two taps
   const hBefore = (await S()).hist;
@@ -231,12 +247,10 @@ async function phoneRun(browser, token){
   if((await S()).active === 'welcome') fail('one tap on Welcome already jumped');
   await tap('button[data-k="welcome"]'); await until('Welcome screen', s => s.active === 'welcome');
 
-  // Reset to round 1 (two taps) from the Settings panel
-  await tap('#bSettings');
+  // Reset to round 1 (two taps) on the main controls
   await tap('button[data-k="reset"]'); await sleep(900);
   if((await S()).active !== 'welcome') fail('one tap on Reset already reset');
   await tap('button[data-k="reset"]'); await until('Reset to round 1', s => s.active === 'between' && s.currentRound === 1);
-  await tap('#bCancel');
 
   // Settings are refused while a round runs (same rule as the laptop)
   await sp.evaluate(() => { cfg.autoNext = true; });
@@ -245,7 +259,8 @@ async function phoneRun(browser, token){
   if(!(await pp.textContent('#setNote')).includes('pause')) fail('phone Settings did not say to pause first');
   await pp.fill('#talkMin', '33'); await tap('#bSave'); await sleep(1500);
   if((await sp.evaluate('cfg.talkMin')) === 33) fail('Settings changed from the phone while the round was running');
-  await tap('#bCancel');
+  await tap('#bBack');
+  if(await pp.isVisible('#sheet')) fail('← Back did not close the phone Settings');
 
   // Laptop keyboard keeps working alongside the phone
   await sp.keyboard.press(' '); await until('laptop Space still works', s => s.active === 'startCountdown' || s.active === 'timer');

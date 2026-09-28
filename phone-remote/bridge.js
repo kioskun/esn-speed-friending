@@ -47,7 +47,8 @@
         cfg: {
           talkMin: cfg.talkMin, rotateMin: cfg.rotateMin, breakMin: cfg.breakMin, startSec: cfg.startSec,
           totalRounds: cfg.totalRounds, volume: cfg.volume, autoNext: cfg.autoNext, tables: cfg.tables,
-          city: cfg.city, venue: cfg.venue, date: cfg.date, time: cfg.time, feedbackUrl: cfg.feedbackUrl || ''
+          city: cfg.city, venue: cfg.venue, date: cfg.date, time: cfg.time, feedbackUrl: cfg.feedbackUrl || '',
+          roundMusic: cfg.roundMusic || 'pulse'
         }
       };
     } catch(e){ return { error: String(e) }; }
@@ -64,8 +65,10 @@
     let p; try{ p = JSON.parse(json); } catch(e){ return; }
     const put = (el, key) => { el.value = (p[key] !== undefined && p[key] !== null) ? p[key] : cfg[key]; };
     put(setTalkMin, 'talkMin'); put(setRotateMin, 'rotateMin'); put(setBreakMin, 'breakMin'); put(setStartSec, 'startSec');
-    put(setTotalRounds, 'totalRounds'); put(setVol, 'volume'); put(setTables, 'tables');
-    put(setCity, 'city'); put(setVenue, 'venue'); put(setDate, 'date'); put(setTime, 'time');
+    put(setTotalRounds, 'totalRounds'); put(setTables, 'tables');
+    put(setCity, 'city'); put(setVenue, 'venue'); put(setTime, 'time');
+    setDate.value = dateToInput(p.date !== undefined && p.date !== null ? p.date : cfg.date);
+    setRoundMusic.value = p.roundMusic || cfg.roundMusic || 'pulse';
     setFeedback.value = (p.feedbackUrl !== undefined && p.feedbackUrl !== null) ? p.feedbackUrl : (cfg.feedbackUrl || '');
     setAutoNext.checked = typeof p.autoNext === 'boolean' ? p.autoNext : cfg.autoNext;
     setHudMode.value = cfg.hudMode;              // operator view mode stays as set on the laptop
@@ -82,6 +85,7 @@
       case 'clearseating':
         clearSeating(); lastRepeats = 0; updateHud(); showToast('Seating history cleared from the phone'); break;
       case 'settings': applySettings(c.payload); break;
+      case 'volume': setVolumeLive(Number(c.payload)); break;
       default: press(c.key);
     }
   }
@@ -107,11 +111,11 @@
   let running = false;
   async function tick(){ if(running) return; running = true; try{ await sync(); } finally{ running = false; } }
   try{
-    const src = 'setInterval(function(){ postMessage(0); }, 300);';
+    const src = 'setInterval(function(){ postMessage(0); }, 150);';
     const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     w.onmessage = tick;
   } catch(e){
-    setInterval(tick, 300);
+    setInterval(tick, 150);
   }
   tick();
 })();

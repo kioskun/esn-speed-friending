@@ -571,6 +571,8 @@
     }
     .field .hint{font-size:12px;color:rgba(255,255,255,.55);line-height:1.35}
     .field .warn-text{font-size:12px;color:var(--warn);line-height:1.35}
+    .back-btn{padding:6px 12px;font-size:13px;margin-right:auto}
+    .field input[type="date"], .field input[type="time"]{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#15151f;color:#fff;font-size:14px;width:100%;font-family:var(--font-body);color-scheme:dark}
     .setup-note{margin-top:12px;padding:10px 12px;border-radius:12px;border:1px solid var(--warn);background:rgba(255,200,0,.10);font-size:14px;line-height:1.4}
     .field input.need{border-color:var(--warn);box-shadow:0 0 0 2px rgba(255,200,0,.25)}
     .volunteer-line{display:flex;align-items:center;justify-content:center;gap:clamp(10px,1.5vw,18px);margin-top:clamp(8px,1.5vh,18px);font-size:clamp(16px,2.2vmin,26px)}
@@ -741,10 +743,9 @@
         </figure>
       </div>
       <p class="intro-note">Keep your badge visible. When it is time to move, the screen shows where each letter goes.</p>
-      <div class="volunteer-line"><img src="Badges/Volunteer%20Badges%205x5cm.png" alt="Volunteer badge" width="650" height="650" /><span>Questions? Ask anyone wearing a <b>VOLUNTEER</b> badge.</span></div>
     </div>
     <div class="screen-footer">
-      <button type="button" class="action-btn" onclick="spaceAction()">Press <b>Space</b> to continue</button>
+      <button type="button" class="action-btn" onclick="spaceAction()">Press <b>Space</b> to meet the volunteers</button>
     </div>
   </div>
 
@@ -759,8 +760,8 @@
         <div class="volunteer-copy">
           <p class="intro-copy">Anyone wearing this <strong>VOLUNTEER</strong> badge is here to help you.</p>
           <ul class="volunteer-help">
-            <li>Find a table or get a badge</li>
-            <li>Understand the rounds and where to move</li>
+            <li>Find your new table when it's time to move</li>
+            <li>Understand the rounds and your badge</li>
             <li>Ask a question or get some support</li>
           </ul>
         </div>
@@ -957,8 +958,9 @@
   <div id="settings" aria-hidden="true">
     <div class="settings-card">
       <div class="title">
+        <button type="button" id="btnBack" class="back-btn">← Back</button>
         <h4>Settings</h4>
-        <span>Press Esc to close</span>
+        <span>Esc closes · volume: ↑ ↓ keys or the phone</span>
       </div>
       <div class="setup-note" id="setupNote" style="display:none">Before the show: fill in the <b>event details</b> at the bottom (city, venue, date, time) and the <b>number of tables</b>, then Save. Esc skips this for now.</div>
       <div class="grid">
@@ -982,19 +984,23 @@
           <label>Total rounds (0 = unlimited)</label>
           <input id="setTotalRounds" type="number" min="0" max="50" step="1" />
         </div>
-        <div class="field">
-          <label>Master volume</label>
-          <div class="row">
-            <input id="setVol" type="range" min="0" max="100" step="1" />
-            <div id="volLabel" style="width:56px;text-align:right;color:#ddd;">70%</div>
-          </div>
-        </div>
+
         <div class="field">
           <label>Auto start after countdown</label>
           <div class="toggle">
             <input id="setAutoNext" type="checkbox" />
             <span>Start round automatically</span>
           </div>
+        </div>
+        <div class="field">
+          <label>Music during rounds</label>
+          <select id="setRoundMusic">
+            <option value="pulse">Café pulse (calm, light beat)</option>
+            <option value="pad">Warm chords</option>
+            <option value="deep">Deep ambient (quietest)</option>
+            <option value="lofi">Lofi mix (same as the intro)</option>
+            <option value="off">No music</option>
+          </select>
         </div>
         <div class="section-head">Rotation</div>
         <div class="field">
@@ -1026,8 +1032,8 @@
         <div class="section-head">Event details (welcome screen)</div>
         <div class="field"><label>City</label><input id="setCity" type="text" maxlength="40" /></div>
         <div class="field"><label>Venue</label><input id="setVenue" type="text" maxlength="60" /></div>
-        <div class="field"><label>Date</label><input id="setDate" type="text" maxlength="30" placeholder="e.g. 09/02/2026" /></div>
-        <div class="field"><label>Time</label><input id="setTime" type="text" maxlength="20" placeholder="e.g. 18:00" /></div>
+        <div class="field"><label>Date</label><input id="setDate" type="date" /></div>
+        <div class="field"><label>Time</label><input id="setTime" type="time" /></div>
       </div>
       <div class="settings-actions">
         <button class="danger" id="btnReset">Reset Event</button>
@@ -3346,7 +3352,8 @@ const DEFAULTS = {
   venue: '',
   date: '',
   time: '',
-  feedbackUrl: ''
+  feedbackUrl: '',
+  roundMusic: 'pulse'   // pulse | pad | deep | lofi | off
 };
 let cfg = loadConfig();
 
@@ -3424,6 +3431,7 @@ function setMasterVolume(v){
   vol.tick = 0.55*master;
   vol.rotate = 0.95*master;
   Object.keys(audio).forEach(k => { if(!fades[k]) audio[k].volume = vol[k]; });
+  if(talkGain && audioCtx) talkGain.gain.setTargetAtTime(talkLevel(), audioCtx.currentTime, 0.2);
 }
 
 function fallback(which){
@@ -3448,7 +3456,134 @@ function safePlay(which){
   if(p) p.catch(err => { if(!isInterrupt(err) && audioUnlocked) fallback(which); });
 }
 
-/* ---- Music: exactly one track (bg, rotate or none) is wanted at a time ---- */
+/* ===========================
+   ROUND MUSIC (made live in the browser, no music file)
+   Calm, low background for the conversation rounds. Three styles:
+   'pulse' soft chords + gentle plucks + a quiet beat (cafe feel)
+   'pad'   warm slow chords only
+   'deep'  low drone with soft bells
+   The same code renders the short previews (OfflineAudioContext).
+=========================== */
+function makeRoundMusic(ctx, dest, style, seed){
+  let rnd = seed || 12345;
+  const rand = () => { rnd = (rnd * 16807) % 2147483647; return rnd / 2147483647; };
+  const out = ctx.createGain(); out.gain.value = 1;
+  const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = style === 'deep' ? 1400 : 2200; tone.Q.value = 0.3;
+  out.connect(tone); tone.connect(dest);
+  const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+  // Am9 - Fmaj7 - Cmaj7 - G6 (warm, not sleepy)
+  const CHORDS = [[45, 57, 60, 64, 67, 71], [41, 57, 60, 64, 65, 69], [48, 55, 59, 64, 67, 72], [43, 55, 59, 62, 64, 67]];
+  const BPM = style === 'pulse' ? 84 : 70;
+  const beat = 60 / BPM, bar = beat * 4, chordLen = bar * 2;
+  let next = 0, step = 0;
+
+  function pad(notes, t, len, level){
+    notes.forEach((n, i) => {
+      [-6, 6].forEach(det => {
+        const o = ctx.createOscillator(); o.type = i === 0 ? 'sine' : 'triangle';
+        o.frequency.value = midi(n); o.detune.value = det;
+        const g = ctx.createGain(); const peak = level * (i === 0 ? 1.4 : 0.55);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(peak, t + 1.8);
+        g.gain.setValueAtTime(peak, t + len - 0.2);
+        g.gain.linearRampToValueAtTime(0, t + len + 1.6);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + len + 1.8);
+      });
+    });
+  }
+  function pluck(n, t, level){
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = midi(n);
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = midi(n) * 2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+    const g2 = ctx.createGain(); g2.gain.value = 0.25;
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out);
+    o.start(t); o2.start(t); o.stop(t + 1.2); o2.stop(t + 1.2);
+  }
+  function kick(t, level){
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+    const g = ctx.createGain(); g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.4);
+  }
+  let noiseBuf = null;
+  function hat(t, level){
+    if(!noiseBuf){
+      noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.1), ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0); for(let i = 0; i < d.length; i++) d[i] = rand() * 2 - 1;
+    }
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+    const g = ctx.createGain(); g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t + 0.1);
+  }
+  function bell(n, t, level){
+    [1, 2.76, 5.4].forEach((m, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = midi(n) * m;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level / (i + 1), t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 4 - i);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 4.2);
+    });
+  }
+
+  // Schedule everything up to time `until`
+  function scheduleUntil(until){
+    while(next < until){
+      const chord = CHORDS[step % CHORDS.length];
+      const t = next;
+      if(style === 'deep'){
+        pad([chord[0] - 12, chord[0] - 5, chord[0]], t, chordLen, 0.05);
+        for(let k = 0; k < 2; k++) if(rand() < 0.8) bell(chord[2 + Math.floor(rand() * 4)] + 12, t + k * bar + rand() * beat * 2, 0.035);
+      } else {
+        pad(chord, t, chordLen, style === 'pad' ? 0.045 : 0.035);
+        if(style === 'pulse'){
+          for(let b = 0; b < 8; b++){
+            const bt = t + b * beat;
+            if(b % 4 === 0 || b % 4 === 2) kick(bt, 0.22);
+            hat(bt + beat / 2, 0.02);
+            const arp = [chord[2], chord[3], chord[4], chord[5], chord[4], chord[3], chord[2], chord[4]];
+            if(rand() < 0.75) pluck(arp[b] + 12, bt + (rand() < 0.3 ? beat / 2 : 0), 0.05);
+          }
+        }
+      }
+      next += chordLen; step++;
+    }
+  }
+  return {
+    out,
+    start(t0){ next = t0; scheduleUntil(t0 + chordLen * 2); },
+    scheduleUntil,
+    stop(){ try{ out.gain.setTargetAtTime(0, ctx.currentTime, 0.4); } catch(e){} setTimeout(() => { try{ out.disconnect(); } catch(e){} }, 3000); }
+  };
+}
+
+// Round music player: made live, faded in and out like the music files
+let talk = null, talkGain = null, talkTimer = null;
+const talkLevel = () => muted ? 0 : Math.min(1, 0.7*master);
+function startTalk(){
+  if(talk && talk.style === cfg.roundMusic) return;
+  stopTalk();
+  if(!audioUnlocked) return;               // syncMusic runs again on the first key/click
+  try{ ensureAudioCtx(); } catch { return; }
+  talkGain = audioCtx.createGain();
+  talkGain.gain.value = 0;
+  talkGain.connect(audioCtx.destination);
+  talk = makeRoundMusic(audioCtx, talkGain, cfg.roundMusic, 1 + Math.floor(Math.random()*100000));
+  talk.style = cfg.roundMusic;
+  talk.start(audioCtx.currentTime + 0.1);
+  talkGain.gain.setTargetAtTime(talkLevel(), audioCtx.currentTime, 0.6);
+  talkTimer = setInterval(() => { if(talk) talk.scheduleUntil(audioCtx.currentTime + 4); }, 500);
+}
+function stopTalk(){
+  clearInterval(talkTimer); talkTimer = null;
+  if(!talk) return;
+  const g = talkGain;
+  try{ g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.25); } catch {}
+  setTimeout(() => { try{ g.disconnect(); } catch {} }, 2500);
+  talk = null; talkGain = null;
+}
+
+/* ---- Music: exactly one track (bg, rotate, round music or none) is wanted at a time ---- */
 const fades = {};
 function fadeTo(k, target, ms, done){
   const a = audio[k];
@@ -3480,11 +3615,14 @@ function musicStop(k, ms=700){
 
 let rotateDelay = null;
 function wantedMusic(){
-  if(INTRO.includes(active) || active === 'break') return 'bg';
-  if(active === 'timer' && !isPaused) return 'bg';
+  if(INTRO.includes(active) || active === 'break' || active === 'between') return 'bg';
+  if(active === 'timer' && !isPaused){
+    const rm = cfg.roundMusic || 'pulse';
+    return rm === 'off' ? null : rm === 'lofi' ? 'bg' : 'talk';
+  }
   if(active === 'rotation') return 'rotate';
   if(active === 'helpFull'){
-    if(INTRO.includes(helpFullPrev) || helpFullPrev === 'break') return 'bg';
+    if(INTRO.includes(helpFullPrev) || helpFullPrev === 'break' || helpFullPrev === 'between') return 'bg';
     if(helpFullPrev === 'rotation') return 'rotate';
     return null;
   }
@@ -3492,6 +3630,7 @@ function wantedMusic(){
 }
 function syncMusic(){
   const want = wantedMusic();
+  if(want === 'talk') startTalk(); else stopTalk();
   if(want !== 'bg') musicStop('bg');
   if(want !== 'rotate'){ clearTimeout(rotateDelay); rotateDelay = null; musicStop('rotate'); }
   if(want === 'bg') musicStart('bg', false);
@@ -3508,6 +3647,7 @@ function bgOff(){ syncMusic(); }
 function setMuted(on){
   muted = on;
   Object.values(audio).forEach(a => { a.muted = on; });
+  if(talkGain && audioCtx) talkGain.gain.setTargetAtTime(talkLevel(), audioCtx.currentTime, 0.1);
   showToast(on ? 'Sound muted (M to unmute)' : 'Sound on');
   updateHud();
 }
@@ -3521,7 +3661,7 @@ function stopTick(){
 =========================== */
 // Intro screens in order (seat first, badges are handed out at the table)
 // People are already seated with their badges when the intro starts.
-const INTRO = ['welcome','tutorial','badges','helpIntro','warmup'];
+const INTRO = ['welcome','tutorial','badges','volunteers','helpIntro','warmup'];
 const screens = ['welcome','tutorial','badges','volunteers','seating','helpIntro','warmup','between','startCountdown','timer','rotation','break','helpFull','finished'];
 let active = 'welcome';
 let currentRound = 1;
@@ -3735,7 +3875,7 @@ const HUD_KEYS = [
   ['H','Help (QR)'], ['Esc / G','Settings'],
   [']  [','+1 / −1 min'], ['+  −','+30 / −30 s'],
   ['W W','Welcome'], ['0 0','Reset to round 1'],
-  ['L','Lock keys'], ['M','Mute / unmute'],
+  ['L','Lock keys'], ['M','Mute / unmute'], ['↑ ↓','Volume'],
   ['O','Operator view'],
 ];
 
@@ -3834,6 +3974,7 @@ function openOperatorWindow(){
       <button data-k="h">Help (H)</button><button data-k="m">Mute (M)</button>
       <button data-k="Escape">Settings (Esc)</button>
       <button data-k="[">−1 min</button><button data-k="]">+1 min</button>
+      <button data-k="ArrowDown">Vol −</button><button data-k="ArrowUp">Vol +</button>
     </div>
     <p style="font-size:12px;color:rgba(255,255,255,.5);margin-top:14px">Keys work in this window too. Keep it on the laptop screen; the projector shows only the event. Press O to close this window.</p>
     <div id="optoast" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:10px;background:#222;border:1px solid rgba(255,255,255,.25);opacity:0;transition:opacity .2s;pointer-events:none"></div>
@@ -4422,9 +4563,8 @@ const setRotateMin = document.getElementById('setRotateMin');
 const setBreakMin = document.getElementById('setBreakMin');
 const setStartSec = document.getElementById('setStartSec');
 const setTotalRounds = document.getElementById('setTotalRounds');
-const setVol = document.getElementById('setVol');
-const volLabel = document.getElementById('volLabel');
 const setAutoNext = document.getElementById('setAutoNext');
+const setRoundMusic = document.getElementById('setRoundMusic');
 const setTables = document.getElementById('setTables');
 const setHudMode = document.getElementById('setHudMode');
 const setCity = document.getElementById('setCity');
@@ -4497,18 +4637,17 @@ function openSettings(){
   setBreakMin.value = cfg.breakMin;
   setStartSec.value = cfg.startSec;
   setTotalRounds.value = cfg.totalRounds;
-  setVol.value = cfg.volume;
   setAutoNext.checked = cfg.autoNext;
+  setRoundMusic.value = cfg.roundMusic || 'pulse';
   setTables.value = cfg.tables;
   setHudMode.value = cfg.hudMode;
   setCity.value = cfg.city;
   setVenue.value = cfg.venue;
-  setDate.value = cfg.date;
-  setTime.value = cfg.time;
+  setDate.value = dateToInput(cfg.date);
+  setTime.value = /^\d{1,2}:\d{2}$/.test(cfg.time || '') ? cfg.time.padStart(5, '0') : '';
   setFeedback.value = cfg.feedbackUrl || '';
   updateSeatInfo();
   markMissingEventInfo();
-  volLabel.textContent = cfg.volume + "%";
 }
 
 function toggleSettings(){
@@ -4520,7 +4659,27 @@ function closeSettings(){
   modal.setAttribute('aria-hidden','true');
 }
 
-setVol.addEventListener('input', ()=> volLabel.textContent = setVol.value + "%");
+document.getElementById('btnBack').addEventListener('click', closeSettings);
+
+// Date picker <-> the dd/mm/yyyy shown on the Welcome screen
+function dateToInput(d){
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((d || '').trim());
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : '';
+}
+function dateFromInput(v){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((v || '').trim());
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (v || '').trim();
+}
+
+// Volume is live: ↑/↓ on the keyboard, the operator window or the phone slider
+function setVolumeLive(v){
+  cfg.volume = clampInt(v, 0, 100, cfg.volume);
+  saveConfig(cfg);
+  setMasterVolume(cfg.volume);
+  showToast('Volume ' + cfg.volume + '%');
+  updateHud();
+}
 setTables.addEventListener('input', updateSeatInfo);
 document.getElementById('btnCancel').addEventListener('click', closeSettings);
 
@@ -4531,13 +4690,13 @@ document.getElementById('btnSave').addEventListener('click', ()=>{
   cfg.breakMin = clampInt(setBreakMin.value, 0, 60, DEFAULTS.breakMin);
   cfg.startSec = clampInt(setStartSec.value, 0, 60, DEFAULTS.startSec);
   cfg.totalRounds = clampInt(setTotalRounds.value, 0, 50, DEFAULTS.totalRounds);
-  cfg.volume = clampInt(setVol.value, 0, 100, DEFAULTS.volume);
   cfg.autoNext = !!setAutoNext.checked;
+  cfg.roundMusic = ['pulse','pad','deep','lofi','off'].includes(setRoundMusic.value) ? setRoundMusic.value : 'pulse';
   cfg.tables = clampInt(setTables.value, 0, 99, 0);
   cfg.hudMode = setHudMode.value === 'window' ? 'window' : 'projector';
   cfg.city = setCity.value.trim();
   cfg.venue = setVenue.value.trim();
-  cfg.date = setDate.value.trim();
+  cfg.date = dateFromInput(setDate.value);
   cfg.time = setTime.value.trim();
   cfg.feedbackUrl = setFeedback.value.trim();
 
@@ -4550,6 +4709,7 @@ document.getElementById('btnSave').addEventListener('click', ()=>{
   }
   if(active === 'rotation' && roundMoves) renderRotation();
   setMasterVolume(cfg.volume);
+  syncMusic();
   updateRoundBadge();
   updateProgress();
   closeSettings();
@@ -4713,6 +4873,7 @@ function handleKey(e){
   if(lockMode){
     if(k === 'L'){ setLock(false); return; }
     if(k === 'M'){ setMuted(!muted); return; }
+    if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){ setVolumeLive(cfg.volume + (e.key === 'ArrowUp' ? 10 : -10)); return; }
     if(k === 'O'){ toggleOperatorView(); return; }
     if(k === 'G' || e.key === 'Escape'){ toggleSettings(); return; }
     return;
@@ -4721,6 +4882,7 @@ function handleKey(e){
   /* Not locked */
   if(k === 'L'){ setLock(true); return; }
   if(k === 'M'){ setMuted(!muted); return; }
+  if(e.key === 'ArrowUp' || e.key === 'ArrowDown'){ setVolumeLive(cfg.volume + (e.key === 'ArrowUp' ? 10 : -10)); return; }
 
   if(k === 'G' || e.key === 'Escape'){ toggleSettings(); return; }
   if(k === 'O'){ toggleOperatorView(); return; }

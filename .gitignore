@@ -1,0 +1,5 @@
+# Old material, too large for GitHub (one file is 167 MB). Kept on Drive.
+archive/
+node_modules/
+test-results/
+*.log

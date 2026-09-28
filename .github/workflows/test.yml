@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Rotation simulation (nobody meets twice)
+        run: node tests/simulate-rotation.js --quick
+      - name: Key test (every key on every screen and state)
+        run: node tests/key-test.js
+        env:
+          CI: "true"
+          WORKERS: "4"

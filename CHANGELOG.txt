@@ -1,0 +1,41 @@
+ESN SPEED FRIENDING - CHANGES
+=============================
+
+For the event: download the latest zip from the GitHub repository's Releases
+(or open current\speed-friending-esn.html in this folder). See README.md.
+
+How versions work now
+  - Every change is saved in git (GitHub keeps the full history), so there are
+    no numbered copies any more. The old v1-v7 copies are in archive\versions\.
+  - A new download is made by tagging a version (e.g. v8.2) and pushing the
+    tag: GitHub builds the zip and publishes it under Releases.
+  - Edit only current\ (the app), phone-remote\, feedback-form\.
+  - archive\ stays on this computer / Drive only (too large for GitHub).
+
+Versions (all 28/09/2026)
+  v1  Original app as it was.
+  v2  Sounds fixed (silent ticks, cut-off end bell, sounds turning into beeps),
+      Esc opens Settings, moving stage-light background, rotation cards per badge
+      colour, random moves that don't overwrite Settings, table numbers,
+      date/time/venue in Settings, save progress across refresh, breaks stop timers,
+      duplicate audio files removed.
+  v3  Fixed-move mode removed (always random), arrow keys for intro screens,
+      reset went to Welcome.
+  v4  Seating first, badges handed out at the table, conversation-starters screen,
+      H hint on Welcome.
+  v5  Large operator panel and separate operator window, reset goes to round 1
+      (Get Seated), 30-minute music loop.
+  v6  Bug hunt: one stop-all-timers path (W W, reset and countdown no longer run
+      on in the background), M mute, R rotate, L lock, Settings inside the operator
+      window, held keys don't repeat, last-round and break fixes. Fully key-tested.
+  v7  Bigger operator window so Settings fits without scrolling; the
+      window opens as soon as you switch to it in Settings. Files reorganised.
+  v8  Nobody meets the same person twice: random moves that never repeat a
+      meeting, remembered through the warm-up reset and refreshes (Settings shows
+      how many rotations the table count allows, and has a Clear seating history
+      button). Feedback form link in Settings, shown as a QR on the Thank you
+      screen (made offline, hidden when empty). Tests, feedback form script, README.
+  v8.1 Phone remote (the app file itself is unchanged): double-click
+      phone-remote\start-phone-remote.bat, open the show from the Connect page,
+      scan the QR. Big buttons, live timer, Welcome, Lock, Settings from the phone.
+      Firewall helper. First downloadable release (zip with HOW TO USE.txt).

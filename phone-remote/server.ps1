@@ -19,7 +19,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $Here   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Sep = [IO.Path]::DirectorySeparatorChar
+# The app is in ..\current (working folder) or ..\app (download zip)
 $AppDir = [IO.Path]::GetFullPath([IO.Path]::Combine($Here, '..', 'current'))
+if(-not (Test-Path -LiteralPath $AppDir)){ $AppDir = [IO.Path]::GetFullPath([IO.Path]::Combine($Here, '..', 'app')) }
 $AppFile = 'speed-friending-esn.html'
 if(-not (Test-Path -LiteralPath ([IO.Path]::Combine($AppDir, $AppFile)))){ Write-Host "Can't find $AppFile in $AppDir"; exit 1 }
 
@@ -43,7 +45,9 @@ if(-not $Token){
 $Boot = [string](Get-Random -Maximum 1000000000)
 
 # Keys the phone may send (the same keys the laptop keyboard uses)
-$AllowedKeys = @(' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft')
+$AllowedKeys = @(' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft', 'l',
+  # actions: Welcome (W W), reset to round 1 (0 0), clear seating history, save Settings (JSON body)
+  'welcome', 'reset', 'clearseating', 'settings')
 
 $Mime = @{
   '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.css'='text/css; charset=utf-8'
@@ -197,7 +201,7 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
       $script:showAt = [DateTime]::UtcNow
       $since = -1; if(-not [int]::TryParse([string]$q['since'], [ref]$since)){ $since = -1 }
       $cutoff = [DateTime]::UtcNow.AddSeconds(-4)   # never replay old taps
-      $list = @($script:cmds | Where-Object { $since -ge 0 -and $_.id -gt $since -and $_.at -gt $cutoff } | ForEach-Object { '{"id":' + $_.id + ',"key":' + (Json $_.key) + '}' })
+      $list = @($script:cmds | Where-Object { $since -ge 0 -and $_.id -gt $since -and $_.at -gt $cutoff } | ForEach-Object { '{"id":' + $_.id + ',"key":' + (Json $_.key) + ',"payload":' + (Json $_.payload) + '}' })
       SendText $client 200 'application/json' ('{"boot":"' + $Boot + '","seq":' + $script:seq + ',"cmds":[' + ($list -join ',') + ']}')
       return
     }
@@ -208,8 +212,13 @@ function Handle($x, [string]$method, [string]$target, [hashtable]$headers, [byte
       if($headers['sec-fetch-site'] -eq 'cross-site'){ SendText $client 403 'application/json' '{"error":"site"}'; return }
       $k = [string]$q['k']
       if($AllowedKeys -notcontains $k){ SendText $client 400 'application/json' '{"error":"key"}'; return }
+      $payload = $null
+      if($k -eq 'settings'){
+        if($body.Length -lt 2 -or $body.Length -gt 4096){ SendText $client 400 'application/json' '{"error":"settings"}'; return }
+        $payload = [Text.Encoding]::UTF8.GetString($body)
+      }
       $script:seq++
-      [void]$script:cmds.Add([pscustomobject]@{ id = $script:seq; key = $k; at = [DateTime]::UtcNow })
+      [void]$script:cmds.Add([pscustomobject]@{ id = $script:seq; key = $k; payload = $payload; at = [DateTime]::UtcNow })
       while($script:cmds.Count -gt 50){ $script:cmds.RemoveAt(0) }
       $fresh = ([DateTime]::UtcNow - $script:showAt).TotalSeconds -lt 3
       SendText $client 200 'application/json' ('{"ok":true,"id":' + $script:seq + ',"showConnected":' + $(if($fresh){'true'}else{'false'}) + '}')

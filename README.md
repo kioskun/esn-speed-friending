@@ -4,6 +4,8 @@ The screen we project at ESN Thessaloniki speed friending nights. It welcomes pe
 
 It is one HTML file. There is nothing to install and no internet is needed on the night.
 
+**Just want to run an event?** Download the latest `ESN-Speed-Friending-….zip` from this repository's **Releases** (right-hand side of the GitHub page), unzip it, and open `HOW TO USE.txt`. The zip holds only what you need; everything below is for people changing the app.
+
 ## Running the event
 
 1. Open `current/speed-friending-esn.html` in Chrome, on the laptop connected to the projector. Press F11 for full screen.
@@ -36,7 +38,7 @@ Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 
 **Network: use a phone hotspot.** Venue Wi-Fi often blocks phones from reaching laptops.
 1. On the phone you'll use as the remote (or a second phone), turn on **Personal hotspot / Mobile hotspot**.
 2. Connect the laptop to that hotspot's Wi-Fi. The remote only needs the local connection, not mobile data.
-3. Double-click `phone-remote\start-phone-remote.bat`. A black window opens (keep it open all night), and the browser opens two pages: **Connect your phone** and **the show**.
+3. Double-click `phone-remote\start-phone-remote.bat`. A black window opens (keep it open all night), and the browser opens the **Connect your phone** page. Open the show with its **Open the show** button, not by double-clicking the HTML file. The page shows "● Show connected" when it's right.
 4. **The first time only**, Windows Firewall asks whether *Windows PowerShell* may use the network. Tick **Private** *and* **Public** (a hotspot often counts as public), then click **Allow access**. Do this before the event so the prompt never appears on the projector.
 5. Scan the QR on the *Connect your phone* page with the phone camera. The remote opens in the phone's browser and shows **Connected**. If there are several QRs, use the one marked "Try this one first", or whichever matches the hotspot.
 6. Move the show tab to the projector, press F11, and click once on it so sound can play.
@@ -44,9 +46,11 @@ Control the show from your phone: a big Start/Pause button, Rotate, Break, ±30 
 **Start the launcher and connect the phone before guests arrive, or while the projector shows something else.** The Connect page and the black window show the access code. Keep the laptop on your hotspot only, not the venue Wi-Fi.
 
 Good to know:
-- **Rotate** and **Break** need two taps, so a pocket tap can't move the room. Reset (0 0) and Settings stay on the laptop only.
-- If the keys are locked (L), the phone is locked too, except Mute. The phone shows "KEYS LOCKED".
-- The access code in the QR changes every time the launcher starts. After a restart, scan again.
+- Phone buttons: the big button (it says what it will do: Next screen, Start round, Pause, Resume, Skip rotation…), **Rotate now**, **Break**, −1 min, −30 s, +30 s, +1 min, ◀ Back / Next ▶ (intro screens), Help QR, Mute, **Welcome screen**, **Lock keys**, and **⚙ Settings**.
+- **Rotate now**, **Break** and **Welcome screen** need two taps, so a pocket tap can't move the room.
+- **⚙ Settings** on the phone has the same settings as Esc on the laptop (times, rounds, volume, auto start, tables, feedback link, city, venue, date, time), with the same limits. Like on the laptop, pause the round before saving. It also has **Reset to round 1** (like 0 0, keeps the warm-up history) and **Clear seating history** (only before a new event), both with two taps. The operator-view mode stays on the laptop.
+- **Lock keys** locks the laptop keyboard and the phone together. Only Mute, Lock keys and Settings still work until you tap Unlock keys (or press L on the laptop).
+- The access code in the QR stays the same for 24 hours, even if you restart the launcher.
 - **Settings and seating history are stored separately** for the launcher (`http://localhost`) and for the file opened by double-click. Pick one way for the whole night, and set Settings (Esc) in that one.
 - If the phone shows "This site can't be reached / took too long to respond", Windows Firewall is blocking it (often because the prompt was closed, or the network counts as Public). On the laptop, double-click `phone-remote\allow-phone-in-firewall.bat`, click **Yes**, then restart the launcher and scan again.
 - If the phone says "Laptop not reachable", check that both are on the same hotspot and that the black window is still open. Otherwise, carry on with the keyboard or TeamViewer.
@@ -76,7 +80,8 @@ Answers appear in the form's *Responses* tab in Google Drive.
 | Path | What it is |
 |---|---|
 | `current/` | The version in use: `speed-friending-esn.html`, `assets/` (sounds, help QR) and `Badges/` (print at 5 × 5 cm). Only edit here. |
-| `versions/` | Numbered snapshots of earlier versions. `VERSIONS.txt` says what changed in each. |
+| `CHANGELOG.txt` | What changed in each version. |
+| `tools/` | `build-release.js` makes the download zip; `HOW TO USE.txt` goes inside it. |
 | `feedback-form/` | Google Apps Script that creates the feedback form. |
 | `phone-remote/` | Phone remote launcher (`start-phone-remote.bat`), its small web server, and the phone page. It serves `current/` without changing it. |
 | `tests/` | Automatic tests (below). |
@@ -84,7 +89,7 @@ Answers appear in the form's *Responses* tab in Google Drive.
 
 ## Changing the app
 
-Before every change, copy `current/speed-friending-esn.html` to `versions/` as the next number and add a line to `VERSIONS.txt`.
+Git keeps every version, so there are no numbered copies (the old v1 to v7 copies are in `archive/versions/`, which isn't in GitHub). Add a line to `CHANGELOG.txt` for each change. To publish a new download, tag it and push the tag, e.g. `git tag v8.2` then `git push origin v8.2`. GitHub then builds the zip and adds it under Releases.
 
 Tests run automatically on GitHub for every push (the *Actions* tab shows a green tick or a red cross). To run them on your own computer, install [Node.js](https://nodejs.org), then in this folder:
 

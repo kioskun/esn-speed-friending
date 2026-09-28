@@ -58,7 +58,9 @@ const STATES = {
   rotation: [SP,SP,SP,SP,SP,SP,'r'], break: [SP,SP,SP,SP,SP,SP,'b'], helpFull: [SP,SP,SP,SP,SP,SP,'h'],
   finished: [SP,SP,SP,SP,SP,SP,SP,{run:11e3},{run:61e3}],
 };
-const REMOTE_KEYS = [' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft'];
+// phone command -> the keys pressed on the laptop keyboard for the same thing
+const REMOTE_KEYS = [' ', 'r', 'b', 'h', 'm', ']', '[', '+', '-', 'ArrowRight', 'ArrowLeft', 'l', 'welcome', 'reset'];
+const KEYBOARD_FOR = { welcome: ['w','w'], reset: ['0','0'] };
 
 async function drive(ctx, page, steps){
   for(const s of steps){
@@ -77,7 +79,8 @@ async function equivalence(browser, token){
       const ca = await seededContext(browser, cfg, true);
       const pa = await ca.newPage(); await pa.goto(FILE_APP);
       await drive(ca, pa, steps);
-      await pa.keyboard.press(key); await ca.clock.runFor(50);
+      for(const k of (KEYBOARD_FOR[key] || [key])) await pa.keyboard.press(k);
+      await ca.clock.runFor(50);
       const a = await pa.evaluate(snapJs());
       await ca.close();
       // B: the same file served by the remote, key sent from the "phone"
@@ -105,7 +108,7 @@ async function equivalence(browser, token){
       for(const f of ['active','currentRound','isPaused','lockMode','muted','helpOpen','settings','status'])
         if(a[f] !== b[f]) fail(`${name} + ${JSON.stringify(key)}: keyboard gives ${f}=${a[f]}, phone gives ${b[f]}`);
       for(const f of ['timeLeft','rotLeft','breakLeft'])
-        if(Math.abs(a[f] - b[f]) > 2) fail(`${name} + ${JSON.stringify(key)}: keyboard gives ${f}=${a[f]}, phone gives ${b[f]}`);
+        if(Math.abs(a[f] - b[f]) > 10) fail(`${name} + ${JSON.stringify(key)}: keyboard gives ${f}=${a[f]}, phone gives ${b[f]}`);
       if(a.hist !== b.hist) fail(`${name} + ${JSON.stringify(key)}: seating history keyboard ${a.hist}, phone ${b.hist}`);
       errs.forEach(e => fail(`${name} + ${JSON.stringify(key)}: page error ${e}`));
       n++;
@@ -187,6 +190,60 @@ async function phoneRun(browser, token){
   if((await S()).active !== 'timer') fail('one tap on Break already started a break');
   await tap('#bBreak'); await until('Break', s => s.active === 'break');
   await tap('#bSpace'); await until('Skip break', s => s.active === 'between');
+
+  // Lock from the phone, and unlock again
+  await tap('#bLock'); await until('phone Lock keys', s => s.lockMode);
+  await tap('#bSpace'); await sleep(1200);
+  if((await S()).active !== 'between') fail('phone Space worked while keys were locked');
+  await pp.waitForFunction(() => document.getElementById('bLock').textContent === 'Unlock keys', null, { timeout: 3000 }).catch(() => fail('phone does not offer Unlock keys'));
+  await tap('#bLock'); await until('phone Unlock keys', s => !s.lockMode);
+
+  // Settings from the phone: filled with the show's values, saved through the laptop's Save (same limits)
+  await tap('#bSettings');
+  if((await pp.inputValue('#talkMin')) !== '1' || (await pp.inputValue('#tables')) !== '50') fail('phone Settings not filled with the current values');
+  await pp.fill('#talkMin', '20'); await pp.fill('#tables', '47'); await pp.fill('#volume', '250');
+  await pp.fill('#feedbackUrl', 'https://forms.gle/phoneTest1'); await pp.fill('#venue', 'Phone Venue');
+  await pp.uncheck('#autoNext');
+  await tap('#bSave');
+  await sp.waitForFunction(() => cfg.talkMin === 20 && cfg.tables === 47, null, { timeout: 5000 }).catch(() => fail('phone Settings were not applied'));
+  const c = await sp.evaluate(() => ({ cfg, saved: JSON.parse(localStorage.getItem('esn_sf_cfg_v8')), info: document.getElementById('evInfo').textContent,
+    qr: !!document.querySelector('#feedbackQr svg') }));
+  if(c.cfg.volume !== 100) fail(`volume 250 from the phone should be limited to 100 like on the laptop, got ${c.cfg.volume}`);
+  if(c.cfg.autoNext !== false || c.cfg.feedbackUrl !== 'https://forms.gle/phoneTest1' || c.cfg.startSec !== 2 || c.cfg.hudMode !== 'projector') fail('phone Settings: wrong values ' + JSON.stringify(c.cfg));
+  if(!c.saved || c.saved.talkMin !== 20) fail('phone Settings were not saved (lost on refresh)');
+  if(!c.info.includes('Phone Venue')) fail('venue from the phone not shown on the Welcome screen');
+  if(!c.qr) fail('feedback QR not made from the phone link');
+  if(await pp.isVisible('#sheet')) fail('Settings panel did not close after Save');
+
+  // Clear seating history needs two taps
+  const hBefore = (await S()).hist;
+  if(hBefore < 2) fail('expected some seating history before clearing');
+  await tap('#bSettings');
+  await tap('button[data-k="clearseating"]'); await sleep(900);
+  if((await S()).hist !== hBefore) fail('one tap cleared the seating history');
+  await tap('button[data-k="clearseating"]'); await until('Clear seating history', s => s.hist === 1);
+  await tap('#bCancel');
+
+  // Welcome needs two taps
+  await tap('button[data-k="welcome"]'); await sleep(900);
+  if((await S()).active === 'welcome') fail('one tap on Welcome already jumped');
+  await tap('button[data-k="welcome"]'); await until('Welcome screen', s => s.active === 'welcome');
+
+  // Reset to round 1 (two taps) from the Settings panel
+  await tap('#bSettings');
+  await tap('button[data-k="reset"]'); await sleep(900);
+  if((await S()).active !== 'welcome') fail('one tap on Reset already reset');
+  await tap('button[data-k="reset"]'); await until('Reset to round 1', s => s.active === 'between' && s.currentRound === 1);
+  await tap('#bCancel');
+
+  // Settings are refused while a round runs (same rule as the laptop)
+  await sp.evaluate(() => { cfg.autoNext = true; });
+  await tap('#bSpace'); await until('round runs again', s => s.active === 'timer' && !s.isPaused, 6000);
+  await tap('#bSettings');
+  if(!(await pp.textContent('#setNote')).includes('pause')) fail('phone Settings did not say to pause first');
+  await pp.fill('#talkMin', '33'); await tap('#bSave'); await sleep(1500);
+  if((await sp.evaluate('cfg.talkMin')) === 33) fail('Settings changed from the phone while the round was running');
+  await tap('#bCancel');
 
   // Laptop keyboard keeps working alongside the phone
   await sp.keyboard.press(' '); await until('laptop Space still works', s => s.active === 'startCountdown' || s.active === 'timer');

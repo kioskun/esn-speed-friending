@@ -1,0 +1,30 @@
+name: Release
+
+# Push a tag like v8.2 and this builds the download zip and publishes it as
+# a GitHub Release (Releases on the right of the repository page).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rotation check (nobody meets twice)
+        run: node tests/simulate-rotation.js --quick
+      - name: Build the download zip
+        run: node tools/build-release.js "${{ github.ref_name }}"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" "release/ESN-Speed-Friending-${{ github.ref_name }}.zip" \
+            --title "ESN Speed Friending ${{ github.ref_name }}" \
+            --notes "Download **ESN-Speed-Friending-${{ github.ref_name }}.zip** below, unzip it, and open **HOW TO USE.txt**. Nothing to install."

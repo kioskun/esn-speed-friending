@@ -26,12 +26,23 @@
      2. Scan the QR with the phone camera. The remote opens in the phone browser; keep that page open.<br>
      3. Open the show (button below), move it to the projector and press F11. Click once on the show so sound can play.</p>
   <p>Access code: <span class="code" id="code">…</span> · Keyboard and TeamViewer keep working as normal.</p>
-  <p><a class="btn" href="/" target="_blank">Open the show</a></p>
+  <p><a class="btn" href="/" target="_blank">Open the show</a> &nbsp; <span id="showStatus">Checking the show…</span></p>
   <div class="cards" id="cards"></div>
   <p id="note"></p>
   <p style="font-size:14px;color:rgba(255,255,255,.65)">Phone can't open it? Use a phone hotspot (venue Wi-Fi often blocks this), and allow <i>Windows PowerShell</i> in the Windows Firewall prompt (tick Private and Public).
   Settings (Esc) are saved separately for this address: set them here, in the show opened from this page. Don't click inside the black launcher window, because that can pause it.</p>
 <script>
+  // Live check: is a show (opened with the button above) talking to the remote?
+  async function checkShow(){
+    const el = document.getElementById('showStatus');
+    try{
+      const j = await (await fetch('/api/state', { cache:'no-store' })).json();
+      if(j.connected){ el.innerHTML = '<b style="color:#7AC143">● Show connected</b>'; }
+      else { el.innerHTML = '<b class="warn">● Show not connected.</b> Open it with this button (not by double-clicking the HTML file).'; }
+    } catch(e){ el.innerHTML = '<b class="warn">● The launcher has stopped. Start it again.</b>'; }
+  }
+  checkShow(); setInterval(checkShow, 1500);
+
   fetch('/api/info', { cache:'no-store' }).then(r => r.json()).then(info => {
     document.getElementById('code').textContent = info.token;
     const cards = document.getElementById('cards');

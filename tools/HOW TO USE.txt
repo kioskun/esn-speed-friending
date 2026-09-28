@@ -1,0 +1,47 @@
+ESN SPEED FRIENDING - HOW TO USE
+================================
+
+Nothing to install. Works offline. Windows laptop + Google Chrome recommended.
+
+THE SHOW
+  1. Open  app\speed-friending-esn.html  in Chrome (double-click it).
+  2. Drag it to the projector and press F11 for full screen.
+  3. Press any key once, so the browser allows sound.
+  4. Press Esc for Settings: talking time, number of rounds, NUMBER OF TABLES,
+     date / time / venue, feedback form link. Save.
+  5. Press Space to go through the intro screens and start the rounds.
+
+  Keys: Space = next / start / pause    R = rotate now    B = break
+        H = conversation help QR        M = mute          L = lock keys
+        ] [ = +1 / -1 min               + - = +30 / -30 s
+        W W = Welcome screen            0 0 = back to round 1
+        Esc = Settings                  O = operator view
+
+SEATING
+  - Up to 4 people per table, anywhere. A volunteer hands out badges A, B, C, D
+    so every table has different letters. Tables of 3 are fine; never 5.
+  - Warm-up to split friends: after badges, press R once, then 0 0.
+  - Nobody meets the same person twice (the warm-up counts too), as long as the
+    number of tables is set in Settings.
+  - Print the badges in app\Badges at 5 x 5 cm.
+  - Before a NEW event: Esc > Clear seating history.
+
+PHONE REMOTE (optional)
+  1. Laptop and phone on the same phone hotspot (venue Wi-Fi often blocks it).
+  2. First time on a laptop only: double-click
+     phone-remote\allow-phone-in-firewall.bat and click Yes.
+  3. Double-click phone-remote\start-phone-remote.bat. Keep the black window open.
+  4. On the "Connect your phone" page: click OPEN THE SHOW (don't open the HTML
+     file yourself), and scan the QR with the phone.
+  5. Do this before guests arrive: that page shows the access code.
+  Settings are saved separately for the phone-remote show, so set them there
+  (Esc on the laptop, or Settings on the phone).
+
+FEEDBACK FORM (once per event)
+  1. script.google.com, signed in to the event's Google account > New project.
+  2. Paste feedback-form\create-feedback-form.gs, Save, Run, allow access
+     ("Google hasn't verified this app": Advanced > Go to ... > Allow).
+  3. Copy the forms.gle link from the Execution log into Settings > Feedback
+     form link. The QR then shows on the Thank you screen.
+
+More detail and the source code: see the GitHub repository's README.

@@ -48,6 +48,7 @@ Good to know:
 - If the keys are locked (L), the phone is locked too, except Mute. The phone shows "KEYS LOCKED".
 - The access code in the QR changes every time the launcher starts. After a restart, scan again.
 - **Settings and seating history are stored separately** for the launcher (`http://localhost`) and for the file opened by double-click. Pick one way for the whole night, and set Settings (Esc) in that one.
+- If the phone shows "This site can't be reached / took too long to respond", Windows Firewall is blocking it (often because the prompt was closed, or the network counts as Public). On the laptop, double-click `phone-remote\allow-phone-in-firewall.bat`, click **Yes**, then restart the launcher and scan again.
 - If the phone says "Laptop not reachable", check that both are on the same hotspot and that the black window is still open. Otherwise, carry on with the keyboard or TeamViewer.
 
 ### Seating and rotation
